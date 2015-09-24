@@ -25,7 +25,7 @@ typedef struct FrameInfo
 #define TERRAIN_WIDTH  (TERRAIN_STRIDE/3)
 
 int frame_start = 0;
-int frame_end   = 0 + 500;
+int frame_end   = 0+ 1500;
 
 typedef enum NeglRunMode {
   NEGL_NO_UI = 0,
@@ -93,6 +93,10 @@ main (gint    argc,
     for (frame = frame_start; frame <= frame_end; frame++)
       {
   	int rgb_hist[NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM]={0,};
+        int sum = 0;
+        int second_max_hist = 0;
+        int max_hist = 0;
+
         GeglRectangle terrain_row = {frame-frame_start, 0, 1, TERRAIN_WIDTH};
 
 	if (video_frame)
@@ -101,27 +105,69 @@ main (gint    argc,
         gegl_node_set (load, "frame", frame, NULL);
         gegl_node_process (store);
 
+	GeglBufferIterator *it = gegl_buffer_iterator_new (video_frame, NULL, 0,
+                babl_format ("R'G'B' u8"),
+                GEGL_BUFFER_READ,
+                GEGL_ABYSS_NONE);
+
+
+        int slot;
+        for (slot = 0; slot < NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM; slot ++)
+          rgb_hist[slot] = 0;
+
+	while (gegl_buffer_iterator_next (it))
+        {
+          uint8_t *data = (void*)it->data[0];
+          int i;
+          for (i = 0; i < it->length; i++)
+          {
+            int r = data[i * 3 + 0] / 256.0 * NEGL_RGB_HIST_DIM;
+            int g = data[i * 3 + 1] / 256.0 * NEGL_RGB_HIST_DIM;
+            int b = data[i * 3 + 2] / 256.0 * NEGL_RGB_HIST_DIM;
+            int slot = r * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM +
+		       g * NEGL_RGB_HIST_DIM +
+		       b;
+            if (slot < 0) slot = 0;
+            if (slot >= NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM)
+                slot = NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM;
+
+            rgb_hist[slot]++;
+            if (rgb_hist[slot] > max_hist)
+            {
+              second_max_hist = max_hist;
+              max_hist = rgb_hist[slot];
+            }
+            sum++;
+          }
+        }
+
+        {
+           int slot;
+           for (slot = 0; slot < NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM; slot ++)
+{
+     	   //info.rgb_hist[slot] = rgb_hist[slot] / ((second_max_hist + max_hist) * 0.5) * 255;
+           int val = rgb_hist[slot] / (sum * 1.0) * 512;
+           if (val > 255) val = 255; 
+     	   info.rgb_hist[slot] = val;
+}
+        }
+
         GeglRectangle mid_row;
         mid_row.x = 
            gegl_buffer_get_extent (video_frame)-> width * 1.0 * mid_row.height / gegl_buffer_get_extent (video_frame)->height / 2,
         mid_row.y = 0;
         mid_row.width = 1;
-        mid_row.height = NEGL_RGB_HEIGHT;//gegl_buffer_get_extent (video_frame)->height;
+        mid_row.height = NEGL_RGB_HEIGHT;
         gegl_buffer_get (video_frame, &mid_row, 
            1.0 * mid_row.height / gegl_buffer_get_extent (video_frame)->height,
            babl_format ("R'G'B' u8"),
            (void*)&(info.rgb_middle)[0],
            GEGL_AUTO_ROWSTRIDE,
            GEGL_ABYSS_NONE);
-        info.audio_energy[0] = 127;
-        info.audio_energy[1] = 255;
-        info.audio_energy[2] = 255;
 
         gegl_buffer_set (terrain, &terrain_row, 0, babl_format("RGB u8"),
-                         //&(info.rgb_middle[0]),
                          &(info.rgb_middle[0]),
                          3);
-	
 
         switch(negl_run_mode)
         {
