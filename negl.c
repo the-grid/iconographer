@@ -364,9 +364,18 @@ main (gint    argc,
       }
   }
 
+
+  if (output_analysis_path)
+  {
+    fprintf (stderr, "write to %s'n", output_analysis_path);
+  }
+
   if (video_frame)
     g_object_unref (video_frame);
   video_frame = NULL;
+  if (terrain)
+    g_object_unref (terrain);
+  terrain = NULL;
   g_object_unref (gegl_decode);
   g_object_unref (gegl_display);
 
