@@ -367,7 +367,13 @@ main (gint    argc,
 
   if (output_analysis_path)
   {
-    fprintf (stderr, "write to %s'n", output_analysis_path);
+    GeglNode *save_graph = gegl_node_new ();
+    GeglNode *readbuf = gegl_node_new_child (gegl_display, "operation", "gegl:buffer-source", "buffer", terrain, NULL);
+    GeglNode *save = gegl_node_new_child (gegl_display, "operation", "gegl:save",
+      "path", output_analysis_path, NULL);
+      gegl_node_link_many (readbuf, save, NULL);
+    gegl_node_process (save);
+    g_object_unref (save_graph);
   }
 
   if (video_frame)
