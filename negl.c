@@ -7,9 +7,7 @@
 
 #define NEGL_RGB_HEIGHT    42
 #define NEGL_RGB_HIST_DIM   6 // if changing make dim * dim * dim divisible by 3
-
 #define NEGL_RGB_HIST_SLOTS (NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM)
-
 #define NEGL_FFT_DIM       64
 
 typedef struct FrameInfo  
@@ -23,6 +21,7 @@ typedef struct FrameInfo
 
 int frame_start = 0;
 int frame_end   = 0+ 1800;
+int frame_thumb = 0;
 
 char *video_path = NULL;
 char *thumb_path = NULL;
@@ -104,17 +103,16 @@ void parse_args (int argc, char **argv)
   printf ("output analysis: %s\n", output_analysis_path);
 }
 
-
 #define TERRAIN_STRIDE sizeof(FrameInfo)
 #define TERRAIN_WIDTH  (TERRAIN_STRIDE/3)
 
 #include <string.h>
 
-GeglNode   *gegl_decode   = NULL;
-GeglNode   *gegl_display  = NULL;
-GeglNode   *display       = NULL;
-GeglBuffer *video_frame   = NULL;
-GeglBuffer *terrain       = NULL;
+GeglNode   *gegl_decode  = NULL;
+GeglNode   *gegl_display = NULL;
+GeglNode   *display      = NULL;
+GeglBuffer *video_frame  = NULL;
+GeglBuffer *terrain      = NULL;
 
 uint8_t rgb_hist_shuffler[NEGL_RGB_HIST_SLOTS];
 uint8_t rgb_hist_unshuffler[NEGL_RGB_HIST_SLOTS];
@@ -199,6 +197,22 @@ int rgb_hist_unshuffle (int in)
   return rgb_hist_unshuffler[in];
 }
 
+GeglNode *store, *load;
+
+static void decode_frame_no (int frame)
+{
+  if (video_frame)
+    g_object_unref (video_frame);
+  video_frame = NULL;
+  gegl_node_set (load, "frame", frame, NULL);
+  gegl_node_process (store);
+}
+
+void find_best_thumb (void)
+{
+  frame_thumb = 1000;
+}
+
 gint
 main (gint    argc,
       gchar **argv)
@@ -210,10 +224,10 @@ main (gint    argc,
   gegl_display = gegl_node_new ();
 
 
-  GeglNode *store = gegl_node_new_child (gegl_decode,
+  store = gegl_node_new_child (gegl_decode,
                                          "operation", "gegl:buffer-sink",
                                          "buffer", &video_frame, NULL);
-  GeglNode *load = gegl_node_new_child (gegl_decode,
+  load = gegl_node_new_child (gegl_decode,
                               "operation", "gegl:ff-load",
                               "frame", 0,
                               "path", video_path,
@@ -249,7 +263,6 @@ main (gint    argc,
   }
 
   /* a graph for looking at the video */
-
   {
     FrameInfo info = {0};
     gint frame;
@@ -272,11 +285,7 @@ main (gint    argc,
 
         GeglRectangle terrain_row = {frame-frame_start, 0, 1, TERRAIN_WIDTH};
 
-	if (video_frame)
-	  g_object_unref (video_frame);
-	video_frame = NULL;
-        gegl_node_set (load, "frame", frame, NULL);
-        gegl_node_process (store);
+	decode_frame_no (frame);
 
 	GeglBufferIterator *it = gegl_buffer_iterator_new (video_frame, NULL, 0,
                 babl_format ("R'G'B' u8"),
@@ -313,7 +322,6 @@ main (gint    argc,
             sum++;
           }
         }
-
         {
            int slot;
            for (slot = 0; slot < NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM; slot ++)
@@ -329,7 +337,8 @@ main (gint    argc,
 
         GeglRectangle mid_row;
         mid_row.x = 
-           gegl_buffer_get_extent (video_frame)-> width * 1.0 * mid_row.height / gegl_buffer_get_extent (video_frame)->height / 2,
+           gegl_buffer_get_extent (video_frame)-> width * 1.0 *
+            mid_row.height / gegl_buffer_get_extent (video_frame)->height / 2;
         mid_row.y = 0;
         mid_row.width = 1;
         mid_row.height = NEGL_RGB_HEIGHT;
@@ -364,13 +373,26 @@ main (gint    argc,
       }
   }
 
-
   if (output_analysis_path)
   {
     GeglNode *save_graph = gegl_node_new ();
     GeglNode *readbuf = gegl_node_new_child (gegl_display, "operation", "gegl:buffer-source", "buffer", terrain, NULL);
     GeglNode *save = gegl_node_new_child (gegl_display, "operation", "gegl:save",
       "path", output_analysis_path, NULL);
+      gegl_node_link_many (readbuf, save, NULL);
+    gegl_node_process (save);
+    g_object_unref (save_graph);
+  }
+  
+  find_best_thumb ();
+  decode_frame_no (frame_thumb);
+
+  if (thumb_path)
+  {
+    GeglNode *save_graph = gegl_node_new ();
+    GeglNode *readbuf = gegl_node_new_child (gegl_display, "operation", "gegl:buffer-source", "buffer", video_frame, NULL);
+    GeglNode *save = gegl_node_new_child (gegl_display, "operation", "gegl:save",
+      "path", thumb_path, NULL);
       gegl_node_link_many (readbuf, save, NULL);
     gegl_node_process (save);
     g_object_unref (save_graph);
@@ -388,3 +410,4 @@ main (gint    argc,
   gegl_exit ();
   return 0;
 }
+
