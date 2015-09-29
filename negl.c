@@ -1,6 +1,8 @@
 #include <gegl.h>
 #include <glib/gprintf.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <math.h>
 
 // XXX: sort rgb histogram by lightness
 // XXX: implement audio extraction
@@ -14,6 +16,7 @@
 typedef struct FrameInfo  
 {
   uint8_t rgb_mid_row[NEGL_RGB_HEIGHT*3];
+  uint8_t rgb_square_diff[3];
   uint8_t rgb_hist[NEGL_RGB_HIST_SLOTS];
   uint8_t rgb_mid_col[NEGL_RGB_HEIGHT*3];
   //uint8_t audio_energy[3]; 
@@ -36,7 +39,34 @@ char *input_analysis_path = NULL;
 char *output_analysis_path = NULL;
 int run_mode = NEGL_NO_UI;
 int show_progress = 0;
+int sum_diff = 0;
 int frame_thumb = 0;
+
+void usage()
+{
+      printf ("usage: negl [options] <video> [thumb]\n"
+" -p, --progress   - display info about current frame/progress in terminal\n"
+" -oa <analysis-path>, --output-analysis\n"
+"                  - specify path for analysis dump to write (a PNG)\n"
+" -ia <analysis-path>, --input-analysis\n"
+"                  - specify path for analysis dump to read (a PNG)\n"
+" -d, --sum-diff\n"
+"           - sum up all pixel differences for neighbour frames (defaults to not do it)\n"
+"\n"
+"\n"
+"debug level control over run-mode options:\n"
+" --video   - show video frames as they are decoded (for debug)\n"
+" --terrain - show data realtime as it is being gathered\n"
+" --no-ui   - do not show a window (this is the default)\n"
+" -s <frame>, --start-frame <frame>\n"
+"           - first frame to extract analysis from (default 0)\n"
+" -e <frame>, --end-frame <frame>\n"
+"           - last frame to extract analysis from (default is 0 which means auto end)\n"
+"\n"
+"Options can also follow then video (and thumb) arguments.\n"
+"\n");
+  exit (0);
+}
 
 void parse_args (int argc, char **argv)
 {
@@ -55,18 +85,25 @@ void parse_args (int argc, char **argv)
     {
       show_progress = 1;
     }
+    else if (g_str_equal (argv[i], "-d") ||
+        g_str_equal (argv[i], "--sum-diff"))
+    {
+      sum_diff = 1;
+    }
     else if (g_str_equal (argv[i], "-ia") ||
         g_str_equal (argv[i], "--input-analysis"))
     {
       input_analysis_path = g_strdup (argv[i+1]);
       i++;
     } 
-    else if (g_str_equal (argv[i], "-s"))
+    else if (g_str_equal (argv[i], "-s") ||
+             g_str_equal (argv[i], "--start-frame"))
     {
       frame_start = g_strtod (argv[i+1], NULL);
       i++;
     } 
-    else if (g_str_equal (argv[i], "-e"))
+    else if (g_str_equal (argv[i], "-e") ||
+             g_str_equal (argv[i], "--end-frame"))
     {
       frame_end = g_strtod (argv[i+1], NULL);
       i++;
@@ -82,6 +119,11 @@ void parse_args (int argc, char **argv)
     else if (g_str_equal (argv[i], "--terrain"))
     {
       run_mode = NEGL_TERRAIN;
+    }
+    else if (g_str_equal (argv[i], "-h") ||
+             g_str_equal (argv[i], "--help"))
+    {
+      usage();
     }
     else if (stage == 0)
     {
@@ -109,6 +151,9 @@ void parse_args (int argc, char **argv)
 GeglNode   *gegl_decode  = NULL;
 GeglNode   *gegl_display = NULL;
 GeglNode   *display      = NULL;
+
+
+GeglBuffer *previous_video_frame  = NULL;
 GeglBuffer *video_frame  = NULL;
 GeglBuffer *terrain      = NULL;
 
@@ -154,7 +199,6 @@ static inline void init_rgb_hist (void)
             list = g_list_prepend (list, e);
           }
       list = g_list_sort (list, sorted_color);
-      rgb_hist_inited = 1;
       i = 0;
       for (l = list; l; l = l->next, i++)
       {
@@ -180,6 +224,7 @@ static inline void init_rgb_hist (void)
         g_free (e);
       }
       g_list_free (list);
+      rgb_hist_inited = 1;
     }
 }
 
@@ -200,7 +245,15 @@ GeglNode *store, *load;
 static void decode_frame_no (int frame)
 {
   if (video_frame)
+  {
+    if (sum_diff)
+    {
+       if (previous_video_frame)
+         g_object_unref (previous_video_frame);
+       previous_video_frame = gegl_buffer_dup (video_frame);
+    }
     g_object_unref (video_frame);
+  }
   video_frame = NULL;
   gegl_node_set (load, "frame", frame, NULL);
   gegl_node_process (store);
@@ -215,12 +268,14 @@ gint
 main (gint    argc,
       gchar **argv)
 {
+  if (argc < 2)
+    usage();
+
   gegl_init (&argc, &argv);
   parse_args (argc, argv);
 
   gegl_decode = gegl_node_new ();
   gegl_display = gegl_node_new ();
-
 
   store = gegl_node_new_child (gegl_decode,
                                          "operation", "gegl:buffer-sink",
@@ -254,19 +309,22 @@ main (gint    argc,
     case NEGL_NO_UI:
       break;
     case NEGL_VIDEO:
-      readbuf = gegl_node_new_child (gegl_display, "operation", "gegl:buffer-source", NULL);
+      readbuf = gegl_node_new_child (gegl_display,
+                                     "operation", "gegl:buffer-source",
+                                     NULL);
       display = gegl_node_create_child (gegl_display, "gegl:display");
       gegl_node_link_many (readbuf, display, NULL);
       break;
     case NEGL_TERRAIN:
-      readbuf = gegl_node_new_child (gegl_display, "operation", "gegl:buffer-source", NULL);
+      readbuf = gegl_node_new_child (gegl_display,
+                                     "operation", "gegl:buffer-source",
+                                     NULL);
       display = gegl_node_create_child (gegl_display, "gegl:display");
       gegl_node_set (readbuf, "buffer", terrain, NULL);
       gegl_node_link_many (readbuf, display, NULL);
       break;
   }
 
-  /* a graph for looking at the video */
   {
     FrameInfo info = {0};
     gint frame;
@@ -295,11 +353,18 @@ main (gint    argc,
                 babl_format ("R'G'B' u8"),
                 GEGL_BUFFER_READ,
                 GEGL_ABYSS_NONE);
-
+        if (previous_video_frame)
+          gegl_buffer_iterator_add (it, previous_video_frame, NULL, 0,
+                babl_format ("R'G'B' u8"),
+                GEGL_BUFFER_READ,
+                GEGL_ABYSS_NONE);
 
         int slot;
-        for (slot = 0; slot < NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM; slot ++)
+        for (slot = 0; slot < NEGL_RGB_HIST_SLOTS; slot ++)
           rgb_hist[slot] = 0;
+        long r_square_diff = 0;
+        long g_square_diff = 0;
+        long b_square_diff = 0;
 
 	while (gegl_buffer_iterator_next (it))
         {
@@ -314,8 +379,8 @@ main (gint    argc,
 		       g * NEGL_RGB_HIST_DIM +
 		       b;
             if (slot < 0) slot = 0;
-            if (slot >= NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM)
-                slot = NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM;
+            if (slot >= NEGL_RGB_HIST_SLOTS)
+                slot = NEGL_RGB_HIST_SLOTS;
 
             rgb_hist[slot]++;
             if (rgb_hist[slot] > max_hist)
@@ -325,13 +390,29 @@ main (gint    argc,
             }
             sum++;
           }
+          
+          if (previous_video_frame)
+          {
+            uint8_t *data_prev = (void*)it->data[1];
+	    int i;
+	    for (i = 0; i < it->length; i++)
+            {
+#define square(a) ((a)*(a))
+              r_square_diff += square(data[i * 3 + 0] -data_prev [i * 3 + 0]);
+              g_square_diff += square(data[i * 3 + 1] -data_prev [i * 3 + 1]);
+              b_square_diff += square(data[i * 3 + 2] -data_prev [i * 3 + 2]);
+            }
+          }
         }
+        info.rgb_square_diff[0] = sqrt(r_square_diff) * 255 / sum;
+        info.rgb_square_diff[1] = sqrt(g_square_diff) * 255 / sum;
+        info.rgb_square_diff[2] = sqrt(b_square_diff) * 255 / sum;
+
         {
            int slot;
-           for (slot = 0; slot < NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM; slot ++)
+           for (slot = 0; slot < NEGL_RGB_HIST_SLOTS; slot ++)
 {
-     	   int val = (rgb_hist[slot] / (second_max_hist * 0.95 + max_hist * 0.05)) * 255;
-           //int val = rgb_hist[slot] / (sum * 1.0) * 4096;
+     	   int val = (rgb_hist[slot] / (second_max_hist * 0.9 + max_hist * 0.1)) * 255;
            if (val > 255)
              val = 255; 
 
