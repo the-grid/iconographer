@@ -245,9 +245,8 @@ main (gint    argc,
 
   GeglBuffer *terrain = NULL;
   GeglRectangle terrain_rect = {0, 0,
-                                frame_end - frame_start + 1,
-                                TERRAIN_WIDTH
-};
+                                TERRAIN_WIDTH,
+                                frame_end - frame_start + 1};
   terrain = gegl_buffer_new (&terrain_rect, babl_format ("R'G'B' u8"));
 
   switch(run_mode)
@@ -275,7 +274,7 @@ main (gint    argc,
       {
   	int rgb_hist[NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM]={0,};
         int sum = 0;
-        //int second_max_hist = 0;
+        int second_max_hist = 0;
         int max_hist = 0;
 
         if (show_progress)
@@ -288,7 +287,7 @@ main (gint    argc,
           fflush (stdout);
         }
 
-        GeglRectangle terrain_row = {frame-frame_start, 0, 1, TERRAIN_WIDTH};
+        GeglRectangle terrain_row = {0, frame-frame_start, TERRAIN_WIDTH, 1};
 
 	decode_frame_no (frame);
 
@@ -321,7 +320,7 @@ main (gint    argc,
             rgb_hist[slot]++;
             if (rgb_hist[slot] > max_hist)
             {
-              //second_max_hist = max_hist;
+              second_max_hist = max_hist;
               max_hist = rgb_hist[slot];
             }
             sum++;
@@ -331,8 +330,8 @@ main (gint    argc,
            int slot;
            for (slot = 0; slot < NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM; slot ++)
 {
-     	   //int val = rgb_hist[slot] / ((second_max_hist + max_hist) * 0.5) * 255;
-           int val = rgb_hist[slot] / (sum * 1.0) * 4096;
+     	   int val = (rgb_hist[slot] / (second_max_hist * 0.95 + max_hist * 0.05)) * 255;
+           //int val = rgb_hist[slot] / (sum * 1.0) * 4096;
            if (val > 255)
              val = 255; 
 
