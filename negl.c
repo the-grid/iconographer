@@ -5,28 +5,21 @@
 // XXX: sort rgb histogram by lightness
 // XXX: implement audio extraction
 
-#define NEGL_RGB_HEIGHT    42
-#define NEGL_RGB_HIST_DIM   6 // if changing make dim * dim * dim divisible by 3
+#define NEGL_RGB_HEIGHT     64
+#define NEGL_RGB_HIST_DIM    6 // if changing make dim * dim * dim divisible by 3
 #define NEGL_RGB_HIST_SLOTS (NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM)
-#define NEGL_FFT_DIM       64
+#define NEGL_FFT_DIM        64
 
+/* each row in the video terrain is the following 8bit RGB (24bit) data: */
 typedef struct FrameInfo  
 {
-  uint8_t rgb_middle[NEGL_RGB_HEIGHT*3];
-  uint8_t rgb_hist[NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM];
-  uint8_t audio_energy[3];
-  uint8_t audio_fft[NEGL_FFT_DIM*3];
-  uint8_t scene_change_estimate[3];
+  uint8_t rgb_mid_row[NEGL_RGB_HEIGHT*3];
+  uint8_t rgb_hist[NEGL_RGB_HIST_SLOTS];
+  uint8_t rgb_mid_col[NEGL_RGB_HEIGHT*3];
+  //uint8_t audio_energy[3]; 
+  //uint8_t audio_fft[NEGL_FFT_DIM*3];
+  //uint8_t scene_change_estimate[3];
 } FrameInfo;
-
-int frame_start = 0;
-int frame_end   = 0+ 1800;
-int frame_thumb = 0;
-
-char *video_path = NULL;
-char *thumb_path = NULL;
-char *input_analysis_path = NULL;
-char *output_analysis_path = NULL;
 
 typedef enum NeglRunMode {
   NEGL_NO_UI = 0,
@@ -34,11 +27,16 @@ typedef enum NeglRunMode {
   NEGL_TERRAIN
 } NeglRunmode;
 
-int show_progress = 0;
+int frame_start = 0;
+int frame_end   = 0;
 
-//int run_mode = NEGL_VIDEO;
-//int run_mode = NEGL_TERRAIN;
+char *video_path = NULL;
+char *thumb_path = NULL;
+char *input_analysis_path = NULL;
+char *output_analysis_path = NULL;
 int run_mode = NEGL_NO_UI;
+int show_progress = 0;
+int frame_thumb = 0;
 
 void parse_args (int argc, char **argv)
 {
@@ -234,6 +232,13 @@ main (gint    argc,
                               NULL);
   gegl_node_link_many (load, store, NULL);
 
+  decode_frame_no (0);
+
+  {
+    int frames = 0; gegl_node_get (load, "frames", &frames, NULL);
+    if (frame_end == 0)
+      frame_end = frames;
+  }
 
   GeglNode *display = NULL;
   GeglNode *readbuf;
@@ -336,20 +341,36 @@ main (gint    argc,
         }
 
         GeglRectangle mid_row;
-        mid_row.x = 
-           gegl_buffer_get_extent (video_frame)-> width * 1.0 *
-            mid_row.height / gegl_buffer_get_extent (video_frame)->height / 2;
-        mid_row.y = 0;
         mid_row.width = 1;
         mid_row.height = NEGL_RGB_HEIGHT;
+        mid_row.x = 
+           gegl_buffer_get_extent (video_frame)-> width * 1.0 *
+            NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->height / 2.0;
+        mid_row.y = 0;
         gegl_buffer_get (video_frame, &mid_row, 
-           1.0 * mid_row.height / gegl_buffer_get_extent (video_frame)->height,
+           1.0 * NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->height,
            babl_format ("R'G'B' u8"),
-           (void*)&(info.rgb_middle)[0],
+           (void*)&(info.rgb_mid_row)[0],
+           GEGL_AUTO_ROWSTRIDE,
+           GEGL_ABYSS_NONE);
+
+
+        GeglRectangle mid_col;
+        mid_col.x = 0;
+
+        mid_col.y = 
+           gegl_buffer_get_extent (video_frame)-> height * 1.0 *
+            NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->width / 2.0;
+        mid_col.height = 1;
+        mid_col.width = NEGL_RGB_HEIGHT;
+        gegl_buffer_get (video_frame, &mid_col, 
+           1.0 * NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->width,
+           babl_format ("R'G'B' u8"),
+           (void*)&(info.rgb_mid_col)[0],
            GEGL_AUTO_ROWSTRIDE,
            GEGL_ABYSS_NONE);
         gegl_buffer_set (terrain, &terrain_row, 0, babl_format("RGB u8"),
-                         &(info.rgb_middle[0]),
+                         &(info.rgb_mid_row[0]),
                          3);
 
         switch(run_mode)
