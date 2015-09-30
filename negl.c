@@ -27,7 +27,8 @@ typedef struct FrameInfo
 typedef enum NeglRunMode {
   NEGL_NO_UI = 0,
   NEGL_VIDEO,
-  NEGL_TERRAIN
+  NEGL_TERRAIN,
+  NEGL_UI,
 } NeglRunmode;
 
 int frame_start = 0;
@@ -41,6 +42,9 @@ int run_mode = NEGL_NO_UI;
 int show_progress = 0;
 int sum_diff = 0;
 int frame_thumb = 0;
+int time_out = 60;
+
+long babl_ticks (void);
 
 void usage()
 {
@@ -55,6 +59,7 @@ void usage()
 "\n"
 "\n"
 "debug level control over run-mode options:\n"
+" -t, --timeout - stop doing frame info dump after this mant seconds have passed)\n"
 " --video   - show video frames as they are decoded (for debug)\n"
 " --terrain - show data realtime as it is being gathered\n"
 " --no-ui   - do not show a window (this is the default)\n"
@@ -67,6 +72,8 @@ void usage()
 "\n");
   exit (0);
 }
+
+long babl_Ticks (void);
 
 void parse_args (int argc, char **argv)
 {
@@ -102,6 +109,12 @@ void parse_args (int argc, char **argv)
       frame_start = g_strtod (argv[i+1], NULL);
       i++;
     } 
+    else if (g_str_equal (argv[i], "-t") ||
+             g_str_equal (argv[i], "--time-out"))
+    {
+      time_out = g_strtod (argv[i+1], NULL);
+      i++;
+    } 
     else if (g_str_equal (argv[i], "-e") ||
              g_str_equal (argv[i], "--end-frame"))
     {
@@ -115,6 +128,10 @@ void parse_args (int argc, char **argv)
     else if (g_str_equal (argv[i], "--no-ui"))
     {
       run_mode = NEGL_NO_UI;
+    }
+    else if (g_str_equal (argv[i], "--ui"))
+    {
+      run_mode = NEGL_UI;
     }
     else if (g_str_equal (argv[i], "--terrain"))
     {
@@ -231,7 +248,7 @@ static inline void init_rgb_hist (void)
 int rgb_hist_shuffle (int in)
 {
   init_rgb_hist();
-  return rgb_hist_shuffler[in];
+  return rgb_hist_unshuffler[in];
 }
 
 int rgb_hist_unshuffle (int in)
@@ -263,6 +280,8 @@ void find_best_thumb (void)
 {
   frame_thumb = 1000;
 }
+
+GeglNode *translate = NULL;
 
 gint
 main (gint    argc,
@@ -296,6 +315,7 @@ main (gint    argc,
   }
 
   GeglNode *display = NULL;
+  GeglNode *treadbuf;
   GeglNode *readbuf;
 
   GeglBuffer *terrain = NULL;
@@ -308,6 +328,27 @@ main (gint    argc,
   {
     case NEGL_NO_UI:
       break;
+    case NEGL_UI:
+      readbuf = gegl_node_new_child (gegl_display,
+                                     "operation", "gegl:buffer-source",
+                                     NULL);
+      treadbuf = gegl_node_new_child (gegl_display,
+                                     "operation", "gegl:buffer-source",
+                                     NULL);
+      display = gegl_node_new_child (gegl_display, "operation", "gegl:display",
+                                     "window-title", video_path?video_path:"negl", NULL);
+      GeglNode *over= gegl_node_create_child (gegl_display, "gegl:over");
+      translate = gegl_node_create_child (gegl_display, "gegl:translate");
+      GeglNode *crop= gegl_node_new_child (gegl_display, "operation", "gegl:crop",
+          "width", gegl_buffer_get_extent (video_frame)->width * 1.0,
+          "height", gegl_buffer_get_extent (video_frame)->height * 1.0,
+          NULL);
+  
+      gegl_node_set (treadbuf, "buffer", terrain, NULL);
+      gegl_node_link_many (readbuf, over, crop, display, NULL);
+      gegl_node_link_many (treadbuf, translate, NULL);
+      gegl_node_connect_to (translate, "output", over, "aux");
+      break;
     case NEGL_VIDEO:
       readbuf = gegl_node_new_child (gegl_display,
                                      "operation", "gegl:buffer-source",
@@ -316,12 +357,12 @@ main (gint    argc,
       gegl_node_link_many (readbuf, display, NULL);
       break;
     case NEGL_TERRAIN:
-      readbuf = gegl_node_new_child (gegl_display,
+      treadbuf = gegl_node_new_child (gegl_display,
                                      "operation", "gegl:buffer-source",
                                      NULL);
       display = gegl_node_create_child (gegl_display, "gegl:display");
-      gegl_node_set (readbuf, "buffer", terrain, NULL);
-      gegl_node_link_many (readbuf, display, NULL);
+      gegl_node_set (treadbuf, "buffer", terrain, NULL);
+      gegl_node_link_many (treadbuf, display, NULL);
       break;
   }
 
@@ -434,10 +475,8 @@ main (gint    argc,
            GEGL_AUTO_ROWSTRIDE,
            GEGL_ABYSS_NONE);
 
-
         GeglRectangle mid_col;
         mid_col.x = 0;
-
         mid_col.y = 
            gegl_buffer_get_extent (video_frame)-> height * 1.0 *
             NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->width / 2.0;
@@ -455,17 +494,38 @@ main (gint    argc,
 
         switch(run_mode)
         {
+          case NEGL_UI:
+            if (frame % 25 == 0)
+            {
+	    gegl_node_set (readbuf, "buffer", video_frame, NULL);
+	    gegl_node_set (treadbuf, "buffer", terrain, NULL);
+
+            {
+              float y = gegl_buffer_get_extent (video_frame)->height - (frame-frame_start) * 1.0;
+              //if (y < 0) y = 0;
+	    gegl_node_set (translate, "y", y, NULL);
+            }
+	    gegl_node_process (display);
+            }
           case NEGL_NO_UI:
             break;
           case NEGL_VIDEO:
 	    gegl_node_set (readbuf, "buffer", video_frame, NULL);
 	    gegl_node_process (display);
             break;
-          case NEGL_TERRAIN:
-	    gegl_node_set (readbuf, "buffer", terrain, NULL);
+           case NEGL_TERRAIN:
+	    gegl_node_set (treadbuf, "buffer", terrain, NULL);
 	    gegl_node_process (display);
             break;
         }
+
+        if (time_out > 1.0 &&
+            babl_ticks()/1000.0/1000.0 > time_out)
+          {
+             frame_end = frame;
+ 	     terrain_rect.height = frame_end - frame_start + 1;
+             gegl_buffer_set_extent (terrain, &terrain_rect);
+          }
       }
       if (show_progress)
       {
@@ -477,8 +537,8 @@ main (gint    argc,
   if (output_analysis_path)
   {
     GeglNode *save_graph = gegl_node_new ();
-    GeglNode *readbuf = gegl_node_new_child (gegl_display, "operation", "gegl:buffer-source", "buffer", terrain, NULL);
-    GeglNode *save = gegl_node_new_child (gegl_display, "operation", "gegl:save",
+    GeglNode *readbuf = gegl_node_new_child (save_graph, "operation", "gegl:buffer-source", "buffer", terrain, NULL);
+    GeglNode *save = gegl_node_new_child (save_graph, "operation", "gegl:save",
       "path", output_analysis_path, NULL);
       gegl_node_link_many (readbuf, save, NULL);
     gegl_node_process (save);
@@ -491,8 +551,8 @@ main (gint    argc,
   if (thumb_path)
   {
     GeglNode *save_graph = gegl_node_new ();
-    GeglNode *readbuf = gegl_node_new_child (gegl_display, "operation", "gegl:buffer-source", "buffer", video_frame, NULL);
-    GeglNode *save = gegl_node_new_child (gegl_display, "operation", "gegl:save",
+    GeglNode *readbuf = gegl_node_new_child (save_graph, "operation", "gegl:buffer-source", "buffer", video_frame, NULL);
+    GeglNode *save = gegl_node_new_child (save_graph, "operation", "gegl:save",
       "path", thumb_path, NULL);
       gegl_node_link_many (readbuf, save, NULL);
     gegl_node_process (save);
@@ -511,4 +571,3 @@ main (gint    argc,
   gegl_exit ();
   return 0;
 }
-
