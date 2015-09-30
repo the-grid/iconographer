@@ -1,10 +1,10 @@
 #include <gegl.h>
+#include <gegl-audio.h>
 #include <glib/gprintf.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
 
-// XXX: sort rgb histogram by lightness
 // XXX: implement audio extraction
 
 #define NEGL_RGB_HEIGHT     64
@@ -19,7 +19,7 @@ typedef struct FrameInfo
   uint8_t rgb_square_diff[3];
   uint8_t rgb_hist[NEGL_RGB_HIST_SLOTS];
   uint8_t rgb_mid_col[NEGL_RGB_HEIGHT*3];
-  //uint8_t audio_energy[3]; 
+  uint8_t audio_energy[3]; 
   //uint8_t audio_fft[NEGL_FFT_DIM*3];
   //uint8_t scene_change_estimate[3];
 } FrameInfo;
@@ -190,8 +190,8 @@ static gint sorted_color (gconstpointer a, gconstpointer b)
 {
   const Entry *ea = a;
   const Entry *eb = b;
-  return (ea->r + ea->g + ea->b) -
-         (eb->r + eb->g + eb->b);
+  return (ea->r * 3  + ea->g * 6 + ea->b * 2) -
+         (eb->r * 3 + eb->g * 6  + eb->b * 2);
 }
 
 static inline void init_rgb_hist (void)
@@ -488,6 +488,38 @@ main (gint    argc,
            (void*)&(info.rgb_mid_col)[0],
            GEGL_AUTO_ROWSTRIDE,
            GEGL_ABYSS_NONE);
+
+        { GeglAudio *audio = NULL;
+          int i;
+          gegl_node_get (load, "audio", &audio, NULL);
+          if (audio)
+          {
+            float left_max = 0;
+            float right_max = 0;
+            for (i = 0; i < audio->samples; i++)
+            {
+              if (fabs (audio->left[i]) > left_max)
+                left_max = fabs (audio->left[i]);
+              if (fabs (audio->right[i]) > right_max)
+                right_max = fabs (audio->right[i]);   ///XXX: factor out common sub expression
+            }
+             
+            left_max *= 255;
+            if (left_max > 255)
+              left_max = 255;         
+            right_max *= 255;
+            if (right_max > 255)
+              right_max = 255;         
+
+            info.audio_energy[0] = left_max;
+            info.audio_energy[1] = (left_max+right_max)/2;
+            info.audio_energy[2] = right_max;
+          
+            g_object_unref (audio);
+          }
+        }
+
+
         gegl_buffer_set (terrain, &terrain_row, 0, babl_format("RGB u8"),
                          &(info.rgb_mid_row[0]),
                          3);
