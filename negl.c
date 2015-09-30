@@ -42,7 +42,7 @@ int run_mode = NEGL_NO_UI;
 int show_progress = 0;
 int sum_diff = 0;
 int frame_thumb = 0;
-int time_out = 60;
+int time_out = 0;
 
 long babl_ticks (void);
 
@@ -538,21 +538,21 @@ main (gint    argc,
   {
     GeglNode *save_graph = gegl_node_new ();
     GeglNode *readbuf = gegl_node_new_child (save_graph, "operation", "gegl:buffer-source", "buffer", terrain, NULL);
-    GeglNode *save = gegl_node_new_child (save_graph, "operation", "gegl:save",
+    GeglNode *save = gegl_node_new_child (save_graph, "operation", "gegl:png-save",
       "path", output_analysis_path, NULL);
       gegl_node_link_many (readbuf, save, NULL);
     gegl_node_process (save);
     g_object_unref (save_graph);
   }
   
-  find_best_thumb ();
-  decode_frame_no (frame_thumb);
 
   if (thumb_path)
   {
     GeglNode *save_graph = gegl_node_new ();
+    find_best_thumb ();
+    decode_frame_no (frame_thumb);
     GeglNode *readbuf = gegl_node_new_child (save_graph, "operation", "gegl:buffer-source", "buffer", video_frame, NULL);
-    GeglNode *save = gegl_node_new_child (save_graph, "operation", "gegl:save",
+    GeglNode *save = gegl_node_new_child (save_graph, "operation", "gegl:png-save",
       "path", thumb_path, NULL);
       gegl_node_link_many (readbuf, save, NULL);
     gegl_node_process (save);
