@@ -7,7 +7,8 @@
 
 // XXX: implement audio extraction
 
-#define NEGL_RGB_HEIGHT     64
+#define NEGL_RGB_HEIGHT      42
+#define NEGL_RGB_THEIGHT     42
 #define NEGL_RGB_HIST_DIM    6 // if changing make dim * dim * dim divisible by 3
 #define NEGL_RGB_HIST_SLOTS (NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM)
 #define NEGL_FFT_DIM        64
@@ -15,13 +16,13 @@
 /* each row in the video terrain is the following 8bit RGB (24bit) data: */
 typedef struct FrameInfo  
 {
-  uint8_t rgb_mid_row[NEGL_RGB_HEIGHT*3];
+  uint8_t rgb_thumb[NEGL_RGB_THEIGHT*3];
   uint8_t rgb_square_diff[3];
+  uint8_t audio_energy[3]; 
   uint8_t rgb_hist[NEGL_RGB_HIST_SLOTS];
   uint8_t rgb_mid_col[NEGL_RGB_HEIGHT*3];
-  uint8_t audio_energy[3]; 
+  uint8_t rgb_mid_row[NEGL_RGB_HEIGHT*3];
   //uint8_t audio_fft[NEGL_FFT_DIM*3];
-  //uint8_t scene_change_estimate[3];
 } FrameInfo;
 
 typedef enum NeglRunMode {
@@ -297,8 +298,8 @@ main (gint    argc,
   gegl_display = gegl_node_new ();
 
   store = gegl_node_new_child (gegl_decode,
-                                         "operation", "gegl:buffer-sink",
-                                         "buffer", &video_frame, NULL);
+                               "operation", "gegl:buffer-sink",
+                               "buffer", &video_frame, NULL);
   load = gegl_node_new_child (gegl_decode,
                               "operation", "gegl:ff-load",
                               "frame", 0,
@@ -310,6 +311,8 @@ main (gint    argc,
 
   {
     int frames = 0; gegl_node_get (load, "frames", &frames, NULL);
+    double frame_rate = 0; gegl_node_get (load, "frame-rate", &frame_rate, NULL);
+    
     if (frame_end == 0)
       frame_end = frames;
   }
@@ -489,6 +492,22 @@ main (gint    argc,
            GEGL_AUTO_ROWSTRIDE,
            GEGL_ABYSS_NONE);
 
+        mid_col.x = 0;
+        static float vpos = 0.0;
+        mid_col.y = 
+           gegl_buffer_get_extent (video_frame)-> height * 1.0 *
+            NEGL_RGB_THEIGHT / gegl_buffer_get_extent (video_frame)->width * vpos;
+        vpos += 0.03;
+        if (vpos > 1.0) vpos = 0.0;
+        mid_col.height = 1;
+        mid_col.width = NEGL_RGB_THEIGHT;
+        gegl_buffer_get (video_frame, &mid_col, 
+           1.0 * NEGL_RGB_THEIGHT / gegl_buffer_get_extent (video_frame)->width,
+           babl_format ("R'G'B' u8"),
+           (void*)&(info.rgb_thumb)[0],
+           GEGL_AUTO_ROWSTRIDE,
+           GEGL_ABYSS_NONE);
+
         { GeglAudio *audio = NULL;
           int i;
           gegl_node_get (load, "audio", &audio, NULL);
@@ -496,13 +515,21 @@ main (gint    argc,
           {
             float left_max = 0;
             float right_max = 0;
+            float left_sum = 0;
+            float right_sum = 0;
             for (i = 0; i < audio->samples; i++)
             {
+              left_sum += fabs (audio->left[i]);
+              right_sum += fabs (audio->right[i]);
               if (fabs (audio->left[i]) > left_max)
                 left_max = fabs (audio->left[i]);
               if (fabs (audio->right[i]) > right_max)
-                right_max = fabs (audio->right[i]);   ///XXX: factor out common sub expression
+                right_max = fabs (audio->right[i]);
             }
+            left_sum /= audio->samples;
+            right_sum /= audio->samples;
+            left_max = left_sum;
+            right_max = right_sum;
              
             left_max *= 255;
             if (left_max > 255)
@@ -521,7 +548,7 @@ main (gint    argc,
 
 
         gegl_buffer_set (terrain, &terrain_row, 0, babl_format("RGB u8"),
-                         &(info.rgb_mid_row[0]),
+                         &info,
                          3);
 
         switch(run_mode)
