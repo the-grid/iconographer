@@ -162,8 +162,8 @@ static gint sorted_color (gconstpointer a, gconstpointer b)
 {
   const Entry *ea = a;
   const Entry *eb = b;
-  return (ea->r * 3  + ea->g * 6 + ea->b * 2) -
-         (eb->r * 3 + eb->g * 6  + eb->b * 2);
+  return (ea->r * 11011  + ea->g * 213 + ea->b) -
+         (eb->r * 11011 + eb->g * 213  + eb->b);
 }
 
 static inline void init_rgb_hist (void)
@@ -277,7 +277,7 @@ main (gint    argc,
                               NULL);
   gegl_node_link_many (load, store, NULL);
 
-  decode_frame_no (0);
+  decode_frame_no (0); /* we issue a processing/decoding of a frame - to get metadata */
 
   {
     int frames = 0; gegl_node_get (load, "frames", &frames, NULL);
