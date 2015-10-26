@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-// XXX: implement audio extraction
-
 #define NEGL_RGB_HEIGHT      42
 #define NEGL_RGB_THEIGHT     42
 #define NEGL_RGB_HIST_DIM    6 // if changing make dim * dim * dim divisible by 3
@@ -25,13 +23,6 @@ typedef struct FrameInfo
   //uint8_t audio_fft[NEGL_FFT_DIM*3];
 } FrameInfo;
 
-typedef enum NeglRunMode {
-  NEGL_NO_UI = 0,
-  NEGL_VIDEO,
-  NEGL_TERRAIN,
-  NEGL_UI,
-} NeglRunmode;
-
 int frame_start = 0;
 int frame_end   = 0;
 
@@ -39,7 +30,6 @@ char *video_path = NULL;
 char *thumb_path = NULL;
 char *input_analysis_path = NULL;
 char *output_analysis_path = NULL;
-int run_mode = NEGL_NO_UI;
 int show_progress = 0;
 int sum_diff = 0;
 int frame_thumb = 0;
@@ -122,22 +112,6 @@ void parse_args (int argc, char **argv)
       frame_end = g_strtod (argv[i+1], NULL);
       i++;
     } 
-    else if (g_str_equal (argv[i], "--video"))
-    {
-      run_mode = NEGL_VIDEO;
-    }
-    else if (g_str_equal (argv[i], "--no-ui"))
-    {
-      run_mode = NEGL_NO_UI;
-    }
-    else if (g_str_equal (argv[i], "--ui"))
-    {
-      run_mode = NEGL_UI;
-    }
-    else if (g_str_equal (argv[i], "--terrain"))
-    {
-      run_mode = NEGL_TERRAIN;
-    }
     else if (g_str_equal (argv[i], "-h") ||
              g_str_equal (argv[i], "--help"))
     {
@@ -167,9 +141,6 @@ void parse_args (int argc, char **argv)
 #include <string.h>
 
 GeglNode   *gegl_decode  = NULL;
-GeglNode   *gegl_display = NULL;
-GeglNode   *display      = NULL;
-
 
 GeglBuffer *previous_video_frame  = NULL;
 GeglBuffer *video_frame  = NULL;
@@ -295,7 +266,6 @@ main (gint    argc,
   parse_args (argc, argv);
 
   gegl_decode = gegl_node_new ();
-  gegl_display = gegl_node_new ();
 
   store = gegl_node_new_child (gegl_decode,
                                "operation", "gegl:buffer-sink",
@@ -317,57 +287,11 @@ main (gint    argc,
       frame_end = frames;
   }
 
-  GeglNode *display = NULL;
-  GeglNode *treadbuf;
-  GeglNode *readbuf;
-
   GeglBuffer *terrain = NULL;
   GeglRectangle terrain_rect = {0, 0,
                                 TERRAIN_WIDTH,
                                 frame_end - frame_start + 1};
   terrain = gegl_buffer_new (&terrain_rect, babl_format ("R'G'B' u8"));
-
-  switch(run_mode)
-  {
-    case NEGL_NO_UI:
-      break;
-    case NEGL_UI:
-      readbuf = gegl_node_new_child (gegl_display,
-                                     "operation", "gegl:buffer-source",
-                                     NULL);
-      treadbuf = gegl_node_new_child (gegl_display,
-                                     "operation", "gegl:buffer-source",
-                                     NULL);
-      display = gegl_node_new_child (gegl_display, "operation", "gegl:display",
-                                     "window-title", video_path?video_path:"negl", NULL);
-      GeglNode *over= gegl_node_create_child (gegl_display, "gegl:over");
-      translate = gegl_node_create_child (gegl_display, "gegl:translate");
-      GeglNode *crop= gegl_node_new_child (gegl_display, "operation", "gegl:crop",
-          "width", gegl_buffer_get_extent (video_frame)->width * 1.0,
-          "height", gegl_buffer_get_extent (video_frame)->height * 1.0,
-          NULL);
-  
-      gegl_node_set (treadbuf, "buffer", terrain, NULL);
-      gegl_node_link_many (readbuf, over, crop, display, NULL);
-      gegl_node_link_many (treadbuf, translate, NULL);
-      gegl_node_connect_to (translate, "output", over, "aux");
-      break;
-    case NEGL_VIDEO:
-      readbuf = gegl_node_new_child (gegl_display,
-                                     "operation", "gegl:buffer-source",
-                                     NULL);
-      display = gegl_node_create_child (gegl_display, "gegl:display");
-      gegl_node_link_many (readbuf, display, NULL);
-      break;
-    case NEGL_TERRAIN:
-      treadbuf = gegl_node_new_child (gegl_display,
-                                     "operation", "gegl:buffer-source",
-                                     NULL);
-      display = gegl_node_create_child (gegl_display, "gegl:display");
-      gegl_node_set (treadbuf, "buffer", terrain, NULL);
-      gegl_node_link_many (treadbuf, display, NULL);
-      break;
-  }
 
   {
     FrameInfo info = {0};
@@ -551,33 +475,6 @@ main (gint    argc,
                          &info,
                          3);
 
-        switch(run_mode)
-        {
-          case NEGL_UI:
-            if (frame % 25 == 0)
-            {
-	    gegl_node_set (readbuf, "buffer", video_frame, NULL);
-	    gegl_node_set (treadbuf, "buffer", terrain, NULL);
-
-            {
-              float y = gegl_buffer_get_extent (video_frame)->height - (frame-frame_start) * 1.0;
-              //if (y < 0) y = 0;
-	    gegl_node_set (translate, "y", y, NULL);
-            }
-	    gegl_node_process (display);
-            }
-          case NEGL_NO_UI:
-            break;
-          case NEGL_VIDEO:
-	    gegl_node_set (readbuf, "buffer", video_frame, NULL);
-	    gegl_node_process (display);
-            break;
-           case NEGL_TERRAIN:
-	    gegl_node_set (treadbuf, "buffer", terrain, NULL);
-	    gegl_node_process (display);
-            break;
-        }
-
         if (time_out > 1.0 &&
             babl_ticks()/1000.0/1000.0 > time_out)
           {
@@ -625,7 +522,6 @@ main (gint    argc,
     g_object_unref (terrain);
   terrain = NULL;
   g_object_unref (gegl_decode);
-  g_object_unref (gegl_display);
 
   gegl_exit ();
   return 0;
