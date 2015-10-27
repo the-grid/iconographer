@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Rituwall Inc, initial implementation by pippin@gimp.org
+ * Copyright (c) 2015 Rituwall Inc, authoted by pippin@gimp.org
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -551,6 +551,7 @@ main (gint    argc,
   {
     GeglNode *save_graph = gegl_node_new ();
     find_best_thumb ();
+    decode_frame_no (frame_thumb-1);
     decode_frame_no (frame_thumb);
     GeglNode *readbuf = gegl_node_new_child (save_graph, "operation", "gegl:buffer-source", "buffer", video_frame, NULL);
     GeglNode *save = gegl_node_new_child (save_graph, "operation", "gegl:png-save",
