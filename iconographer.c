@@ -141,8 +141,8 @@ void parse_args (int argc, char **argv)
     }
   }
 
+  printf ("\nvideo: %s\n", video_path);
   printf ("frames: %i - %i\n", frame_start, frame_end);
-  printf ("video: %s\n", video_path);
   printf ("thumb: %s\n", thumb_path);
   printf ("input analysis: %s\n", input_analysis_path);
   printf ("output analysis: %s\n", output_analysis_path);
@@ -261,9 +261,31 @@ static void decode_frame_no (int frame)
   gegl_node_process (store);
 }
 
+float score_frame (FrameInfo *info)
+{
+  return info->audio_energy[0];
+}
+
 void find_best_thumb (void)
 {
-  frame_thumb = 1000;
+  int frame;
+  float best_score = 0.0;
+  frame_thumb = 0;
+ 
+  for (frame = 0; frame < frame_end; frame++)
+  {
+    FrameInfo info;
+    GeglRectangle terrain_row = {0, frame-frame_start, TERRAIN_WIDTH, 1};
+    gegl_buffer_get (terrain, &terrain_row, 1.0, babl_format("RGB u8"),
+                     &info, GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
+    float score = score_frame (&info);
+    if (score > best_score)
+      {
+        best_score = score;
+        frame_thumb = frame;
+      }
+  }
+  fprintf (stderr, "best frame: %i\n", frame_thumb);
 }
 
 GeglNode *translate = NULL;
@@ -292,7 +314,6 @@ main (gint    argc,
 
   decode_frame_no (0); /* we issue a processing/decoding of a frame - to get metadata */
 
-  GeglBuffer *terrain = NULL;
   {
     int frames = 0; gegl_node_get (load, "frames", &frames, NULL);
     double frame_rate = 0; gegl_node_get (load, "frame-rate", &frame_rate, NULL);
