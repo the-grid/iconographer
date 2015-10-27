@@ -292,6 +292,7 @@ main (gint    argc,
 
   decode_frame_no (0); /* we issue a processing/decoding of a frame - to get metadata */
 
+  GeglBuffer *terrain = NULL;
   {
     int frames = 0; gegl_node_get (load, "frames", &frames, NULL);
     double frame_rate = 0; gegl_node_get (load, "frame-rate", &frame_rate, NULL);
@@ -299,219 +300,229 @@ main (gint    argc,
     if (frame_end == 0)
       frame_end = frames;
   }
-
-  GeglBuffer *terrain = NULL;
   GeglRectangle terrain_rect = {0, 0,
                                 TERRAIN_WIDTH,
                                 frame_end - frame_start + 1};
-  terrain = gegl_buffer_new (&terrain_rect, babl_format ("R'G'B' u8"));
 
+  if (input_analysis_path)
   {
-    FrameInfo info = {0};
-    gint frame;
-    for (frame = frame_start; frame <= frame_end; frame++)
-      {
-  	int rgb_hist[NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM]={0,};
-        int sum = 0;
-        int second_max_hist = 0;
-        int max_hist = 0;
-
-        if (show_progress)
+    GeglNode *load_graph = gegl_node_new ();
+    GeglNode *load = gegl_node_new_child (load_graph, "operation", "gegl:load", "path", input_analysis_path, NULL);
+    GeglNode *store = gegl_node_new_child (load_graph, "operation",
+                                           "gegl:buffer-sink",
+                                           "buffer", &terrain, NULL);
+    gegl_node_link_many (load, store, NULL);
+    gegl_node_process (store);
+    g_object_unref (load_graph);
+  }
+  else
+  {
+    terrain = gegl_buffer_new (&terrain_rect, babl_format ("R'G'B' u8"));
+    {
+      FrameInfo info = {0};
+      gint frame;
+      for (frame = frame_start; frame <= frame_end; frame++)
         {
-          fprintf (stdout, "\r%2.1f%% %i/%i (%i)", 
-                   (frame-frame_start) * 100.0 / (frame_end-frame_start),
-                   frame-frame_start,
-                   frame_end-frame_start,
-                   frame);
-          fflush (stdout);
-        }
+          int rgb_hist[NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM]={0,};
+          int sum = 0;
+          int second_max_hist = 0;
+          int max_hist = 0;
 
-        GeglRectangle terrain_row = {0, frame-frame_start, TERRAIN_WIDTH, 1};
-
-	decode_frame_no (frame);
-
-	GeglBufferIterator *it = gegl_buffer_iterator_new (video_frame, NULL, 0,
-                babl_format ("R'G'B' u8"),
-                GEGL_BUFFER_READ,
-                GEGL_ABYSS_NONE);
-        if (previous_video_frame)
-          gegl_buffer_iterator_add (it, previous_video_frame, NULL, 0,
-                babl_format ("R'G'B' u8"),
-                GEGL_BUFFER_READ,
-                GEGL_ABYSS_NONE);
-
-        int slot;
-        for (slot = 0; slot < NEGL_RGB_HIST_SLOTS; slot ++)
-          rgb_hist[slot] = 0;
-        long r_square_diff = 0;
-        long g_square_diff = 0;
-        long b_square_diff = 0;
-
-	while (gegl_buffer_iterator_next (it))
-        {
-          uint8_t *data = (void*)it->data[0];
-          int i;
-          for (i = 0; i < it->length; i++)
+          if (show_progress)
           {
-            int r = data[i * 3 + 0] / 256.0 * NEGL_RGB_HIST_DIM;
-            int g = data[i * 3 + 1] / 256.0 * NEGL_RGB_HIST_DIM;
-            int b = data[i * 3 + 2] / 256.0 * NEGL_RGB_HIST_DIM;
-            int slot = r * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM +
-		       g * NEGL_RGB_HIST_DIM +
-		       b;
-            if (slot < 0) slot = 0;
-            if (slot >= NEGL_RGB_HIST_SLOTS)
-                slot = NEGL_RGB_HIST_SLOTS;
-
-            rgb_hist[slot]++;
-            if (rgb_hist[slot] > max_hist)
-            {
-              second_max_hist = max_hist;
-              max_hist = rgb_hist[slot];
-            }
-            sum++;
+            fprintf (stdout, "\r%2.1f%% %i/%i (%i)", 
+                     (frame-frame_start) * 100.0 / (frame_end-frame_start),
+                     frame-frame_start,
+                     frame_end-frame_start,
+                     frame);
+            fflush (stdout);
           }
-          
+
+          GeglRectangle terrain_row = {0, frame-frame_start, TERRAIN_WIDTH, 1};
+
+	  decode_frame_no (frame);
+
+	  GeglBufferIterator *it = gegl_buffer_iterator_new (video_frame, NULL, 0,
+                  babl_format ("R'G'B' u8"),
+                  GEGL_BUFFER_READ,
+                  GEGL_ABYSS_NONE);
           if (previous_video_frame)
+            gegl_buffer_iterator_add (it, previous_video_frame, NULL, 0,
+                  babl_format ("R'G'B' u8"),
+                  GEGL_BUFFER_READ,
+                  GEGL_ABYSS_NONE);
+
+          int slot;
+          for (slot = 0; slot < NEGL_RGB_HIST_SLOTS; slot ++)
+            rgb_hist[slot] = 0;
+          long r_square_diff = 0;
+          long g_square_diff = 0;
+          long b_square_diff = 0;
+
+          while (gegl_buffer_iterator_next (it))
           {
-            uint8_t *data_prev = (void*)it->data[1];
-	    int i;
-	    for (i = 0; i < it->length; i++)
+            uint8_t *data = (void*)it->data[0];
+            int i;
+            for (i = 0; i < it->length; i++)
             {
+              int r = data[i * 3 + 0] / 256.0 * NEGL_RGB_HIST_DIM;
+              int g = data[i * 3 + 1] / 256.0 * NEGL_RGB_HIST_DIM;
+              int b = data[i * 3 + 2] / 256.0 * NEGL_RGB_HIST_DIM;
+              int slot = r * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM +
+		         g * NEGL_RGB_HIST_DIM +
+                         b;
+              if (slot < 0) slot = 0;
+              if (slot >= NEGL_RGB_HIST_SLOTS)
+                  slot = NEGL_RGB_HIST_SLOTS;
+
+              rgb_hist[slot]++;
+              if (rgb_hist[slot] > max_hist)
+              {
+                second_max_hist = max_hist;
+                max_hist = rgb_hist[slot];
+              }
+              sum++;
+            }
+          
+            if (previous_video_frame)
+            {
+              uint8_t *data_prev = (void*)it->data[1];
+	      int i;
+	      for (i = 0; i < it->length; i++)
+              {
 #define square(a) ((a)*(a))
-              r_square_diff += square(data[i * 3 + 0] -data_prev [i * 3 + 0]);
-              g_square_diff += square(data[i * 3 + 1] -data_prev [i * 3 + 1]);
-              b_square_diff += square(data[i * 3 + 2] -data_prev [i * 3 + 2]);
+                r_square_diff += square(data[i * 3 + 0] -data_prev [i * 3 + 0]);
+                g_square_diff += square(data[i * 3 + 1] -data_prev [i * 3 + 1]);
+                b_square_diff += square(data[i * 3 + 2] -data_prev [i * 3 + 2]);
+              }
             }
           }
-        }
-        info.rgb_square_diff[0] = sqrt(r_square_diff) * 255 / sum;
-        info.rgb_square_diff[1] = sqrt(g_square_diff) * 255 / sum;
-        info.rgb_square_diff[2] = sqrt(b_square_diff) * 255 / sum;
+          info.rgb_square_diff[0] = sqrt(r_square_diff) * 255 / sum;
+          info.rgb_square_diff[1] = sqrt(g_square_diff) * 255 / sum;
+          info.rgb_square_diff[2] = sqrt(b_square_diff) * 255 / sum;
 
-        {
+          {
            int slot;
            for (slot = 0; slot < NEGL_RGB_HIST_SLOTS; slot ++)
-{
-     	   int val = (rgb_hist[slot] / (second_max_hist * 0.9 + max_hist * 0.1)) * 255;
-           if (val > 255)
-             val = 255; 
-
-     	   info.rgb_hist[rgb_hist_shuffle (slot)] = val;
-}
-        }
-
-        GeglRectangle mid_row;
-        mid_row.width = 1;
-        mid_row.height = NEGL_RGB_HEIGHT;
-        mid_row.x = 
-           gegl_buffer_get_extent (video_frame)-> width * 1.0 *
-            NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->height / 2.0;
-        mid_row.y = 0;
-        gegl_buffer_get (video_frame, &mid_row, 
-           1.0 * NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->height,
-           babl_format ("R'G'B' u8"),
-           (void*)&(info.rgb_mid_row)[0],
-           GEGL_AUTO_ROWSTRIDE,
-           GEGL_ABYSS_NONE);
-
-        GeglRectangle mid_col;
-        mid_col.x = 0;
-        mid_col.y = 
-           gegl_buffer_get_extent (video_frame)-> height * 1.0 *
-            NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->width / 2.0;
-        mid_col.height = 1;
-        mid_col.width = NEGL_RGB_HEIGHT;
-        gegl_buffer_get (video_frame, &mid_col, 
-           1.0 * NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->width,
-           babl_format ("R'G'B' u8"),
-           (void*)&(info.rgb_mid_col)[0],
-           GEGL_AUTO_ROWSTRIDE,
-           GEGL_ABYSS_NONE);
-
-        mid_col.x = 0;
-        static float vpos = 0.0;
-        mid_col.y = 
-           gegl_buffer_get_extent (video_frame)-> height * 1.0 *
-            NEGL_RGB_THEIGHT / gegl_buffer_get_extent (video_frame)->width * vpos;
-        vpos += 0.03;
-        if (vpos > 1.0) vpos = 0.0;
-        mid_col.height = 1;
-        mid_col.width = NEGL_RGB_THEIGHT;
-        gegl_buffer_get (video_frame, &mid_col, 
-           1.0 * NEGL_RGB_THEIGHT / gegl_buffer_get_extent (video_frame)->width,
-           babl_format ("R'G'B' u8"),
-           (void*)&(info.rgb_thumb)[0],
-           GEGL_AUTO_ROWSTRIDE,
-           GEGL_ABYSS_NONE);
-
-        { GeglAudio *audio = NULL;
-          int i;
-          gegl_node_get (load, "audio", &audio, NULL);
-          if (audio)
-          {
-            float left_max = 0;
-            float right_max = 0;
-            float left_sum = 0;
-            float right_sum = 0;
-            for (i = 0; i < audio->samples; i++)
-            {
-              left_sum += fabs (audio->left[i]);
-              right_sum += fabs (audio->right[i]);
-              if (fabs (audio->left[i]) > left_max)
-                left_max = fabs (audio->left[i]);
-              if (fabs (audio->right[i]) > right_max)
-                right_max = fabs (audio->right[i]);
+           {
+     	     int val = (rgb_hist[slot] / (second_max_hist * 0.9 + max_hist * 0.1)) * 255;
+             if (val > 255)
+               val = 255; 
+     	     info.rgb_hist[rgb_hist_shuffle (slot)] = val;
             }
-            left_sum /= audio->samples;
-            right_sum /= audio->samples;
-            left_max = left_sum;
-            right_max = right_sum;
+          }
+
+          GeglRectangle mid_row;
+          mid_row.width = 1;
+          mid_row.height = NEGL_RGB_HEIGHT;
+          mid_row.x = 
+             gegl_buffer_get_extent (video_frame)-> width * 1.0 *
+              NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->height / 2.0;
+          mid_row.y = 0;
+          gegl_buffer_get (video_frame, &mid_row, 
+             1.0 * NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->height,
+             babl_format ("R'G'B' u8"),
+             (void*)&(info.rgb_mid_row)[0],
+             GEGL_AUTO_ROWSTRIDE,
+             GEGL_ABYSS_NONE);
+
+          GeglRectangle mid_col;
+          mid_col.x = 0;
+          mid_col.y = 
+             gegl_buffer_get_extent (video_frame)-> height * 1.0 *
+              NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->width / 2.0;
+          mid_col.height = 1;
+          mid_col.width = NEGL_RGB_HEIGHT;
+          gegl_buffer_get (video_frame, &mid_col, 
+             1.0 * NEGL_RGB_HEIGHT / gegl_buffer_get_extent (video_frame)->width,
+             babl_format ("R'G'B' u8"),
+             (void*)&(info.rgb_mid_col)[0],
+             GEGL_AUTO_ROWSTRIDE,
+             GEGL_ABYSS_NONE);
+
+          mid_col.x = 0;
+          static float vpos = 0.0;
+          mid_col.y = 
+             gegl_buffer_get_extent (video_frame)-> height * 1.0 *
+              NEGL_RGB_THEIGHT / gegl_buffer_get_extent (video_frame)->width * vpos;
+          vpos += 0.03;
+          if (vpos > 1.0) vpos = 0.0;
+          mid_col.height = 1;
+          mid_col.width = NEGL_RGB_THEIGHT;
+          gegl_buffer_get (video_frame, &mid_col, 
+             1.0 * NEGL_RGB_THEIGHT / gegl_buffer_get_extent (video_frame)->width,
+             babl_format ("R'G'B' u8"),
+             (void*)&(info.rgb_thumb)[0],
+             GEGL_AUTO_ROWSTRIDE,
+             GEGL_ABYSS_NONE);
+
+          { GeglAudio *audio = NULL;
+            int i;
+            gegl_node_get (load, "audio", &audio, NULL);
+            if (audio)
+            {
+              float left_max = 0;
+              float right_max = 0;
+              float left_sum = 0;
+              float right_sum = 0;
+              for (i = 0; i < audio->samples; i++)
+              {
+                left_sum += fabs (audio->left[i]);
+                right_sum += fabs (audio->right[i]);
+                if (fabs (audio->left[i]) > left_max)
+                  left_max = fabs (audio->left[i]);
+                if (fabs (audio->right[i]) > right_max)
+                  right_max = fabs (audio->right[i]);
+              }
+              left_sum /= audio->samples;
+              right_sum /= audio->samples;
+              left_max = left_sum;
+              right_max = right_sum;
              
-            left_max *= 255;
-            if (left_max > 255)
-              left_max = 255;         
-            right_max *= 255;
-            if (right_max > 255)
-              right_max = 255;         
+              left_max *= 255;
+              if (left_max > 255)
+                left_max = 255;         
+              right_max *= 255;
+              if (right_max > 255)
+                right_max = 255;         
 
-            info.audio_energy[0] = left_max;
-            info.audio_energy[1] = (left_max+right_max)/2;
-            info.audio_energy[2] = right_max;
+              info.audio_energy[0] = left_max;
+              info.audio_energy[1] = (left_max+right_max)/2;
+              info.audio_energy[2] = right_max;
           
-            g_object_unref (audio);
+              g_object_unref (audio);
+            }
           }
+
+          gegl_buffer_set (terrain, &terrain_row, 0, babl_format("RGB u8"),
+                           &info,
+                           3);
+
+          if (time_out > 1.0 &&
+              babl_ticks()/1000.0/1000.0 > time_out)
+            {
+               frame_end = frame;
+               terrain_rect.height = frame_end - frame_start + 1;
+               gegl_buffer_set_extent (terrain, &terrain_rect);
+            }
         }
+        if (show_progress)
+        {
+          fprintf (stdout, "\n");
+          fflush (stdout);
+        }
+    }
 
-
-        gegl_buffer_set (terrain, &terrain_row, 0, babl_format("RGB u8"),
-                         &info,
-                         3);
-
-        if (time_out > 1.0 &&
-            babl_ticks()/1000.0/1000.0 > time_out)
-          {
-             frame_end = frame;
- 	     terrain_rect.height = frame_end - frame_start + 1;
-             gegl_buffer_set_extent (terrain, &terrain_rect);
-          }
-      }
-      if (show_progress)
-      {
-        fprintf (stdout, "\n");
-        fflush (stdout);
-      }
-  }
-
-  if (output_analysis_path)
-  {
-    GeglNode *save_graph = gegl_node_new ();
-    GeglNode *readbuf = gegl_node_new_child (save_graph, "operation", "gegl:buffer-source", "buffer", terrain, NULL);
-    GeglNode *save = gegl_node_new_child (save_graph, "operation", "gegl:png-save",
-      "path", output_analysis_path, NULL);
-      gegl_node_link_many (readbuf, save, NULL);
-    gegl_node_process (save);
-    g_object_unref (save_graph);
+    if (output_analysis_path)
+    {
+      GeglNode *save_graph = gegl_node_new ();
+      GeglNode *readbuf = gegl_node_new_child (save_graph, "operation", "gegl:buffer-source", "buffer", terrain, NULL);
+      GeglNode *save = gegl_node_new_child (save_graph, "operation", "gegl:png-save",
+        "path", output_analysis_path, NULL);
+        gegl_node_link_many (readbuf, save, NULL);
+      gegl_node_process (save);
+      g_object_unref (save_graph);
+    }
   }
   
 
