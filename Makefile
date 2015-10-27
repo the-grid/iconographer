@@ -1,5 +1,5 @@
-negl: negl.c Makefile
-	gcc -o negl negl.c `pkg-config --cflags --libs gegl-0.3` -Wall -Wextra -std=c99
+iconographer: iconographer.c Makefile
+	gcc -o iconographer iconographer.c `pkg-config --cflags --libs gegl-0.3` -Wall -Wextra -std=c99
 clean:
-	rm negl
+	rm iconographer
 
