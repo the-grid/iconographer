@@ -335,6 +335,8 @@ main (gint    argc,
     gegl_node_link_many (load, store, NULL);
     gegl_node_process (store);
     g_object_unref (load_graph);
+
+    frame_end = frame_start + gegl_buffer_get_extent (terrain)->height;
   }
   else
   {
