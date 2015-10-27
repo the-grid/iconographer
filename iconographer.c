@@ -496,7 +496,7 @@ main (gint    argc,
 
           gegl_buffer_set (terrain, &terrain_row, 0, babl_format("RGB u8"),
                            &info,
-                           3);
+                           GEGL_AUTO_ROWSTRIDE);
 
           if (time_out > 1.0 &&
               babl_ticks()/1000.0/1000.0 > time_out)
