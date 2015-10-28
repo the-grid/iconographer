@@ -41,6 +41,8 @@ typedef struct FrameInfo
 
 int frame_start = 0;
 int frame_end   = 0;
+int total_frames = 0;
+double frame_rate = 0; 
 
 char *video_path = NULL;
 char *thumb_path = NULL;
@@ -261,9 +263,31 @@ static void decode_frame_no (int frame)
   gegl_node_process (store);
 }
 
-float score_frame (FrameInfo *info)
+int count_color_bins (FrameInfo *info)
 {
-  return info->audio_energy[0];
+  int count = 0;
+  int i;
+  for (i = 0; i < NEGL_RGB_HIST_SLOTS; i++)
+    if (info->rgb_hist[i] > 1)
+      count ++;
+
+  return count;
+}
+
+float score_frame (FrameInfo *info, int frame_no)
+{
+  float rgb_histogram_count = count_color_bins (info) * 1.0 / NEGL_RGB_HIST_SLOTS;
+  float audio_energy = info->audio_energy[1] / 255.0;
+  float after_first_20_sec = frame_no / frame_rate > 20.0 ? 1.0 : 0.0;
+  float within_first_33_percent = frame_no < total_frames / 3 ? 1 : 0;
+#if 0
+  being just before the max audio magnitude
+  being in middle of a clip
+#endif
+  return audio_energy + 
+         rgb_histogram_count     * 5 +
+         after_first_20_sec      * 2 +
+         within_first_33_percent * 2;
 }
 
 void find_best_thumb (void)
@@ -278,7 +302,7 @@ void find_best_thumb (void)
     GeglRectangle terrain_row = {0, frame-frame_start, TERRAIN_WIDTH, 1};
     gegl_buffer_get (terrain, &terrain_row, 1.0, babl_format("RGB u8"),
                      &info, GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
-    float score = score_frame (&info);
+    float score = score_frame (&info, frame);
     if (score > best_score)
       {
         best_score = score;
@@ -315,11 +339,11 @@ main (gint    argc,
   decode_frame_no (0); /* we issue a processing/decoding of a frame - to get metadata */
 
   {
-    int frames = 0; gegl_node_get (load, "frames", &frames, NULL);
-    double frame_rate = 0; gegl_node_get (load, "frame-rate", &frame_rate, NULL);
+    gegl_node_get (load, "frame-rate", &frame_rate, NULL);
+    total_frames = 0; gegl_node_get (load, "frames", &total_frames, NULL);
     
     if (frame_end == 0)
-      frame_end = frames;
+      frame_end = total_frames;
   }
   GeglRectangle terrain_rect = {0, 0,
                                 TERRAIN_WIDTH,
