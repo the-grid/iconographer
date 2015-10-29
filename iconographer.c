@@ -66,11 +66,9 @@ void usage()
 " -d, --sum-diff\n"
 "           - sum up all pixel differences for neighbour frames (defaults to not do it)\n"
 "\n"
-"\n"
-"debug level control over run-mode options:\n"
 " -t, --timeout - stop doing frame info dump after this mant seconds have passed)\n"
-" -s <frame>, --start-frame <frame>\n"
-"           - first frame to extract analysis from (default 0)\n"
+/*" -s <frame>, --start-frame <frame>\n"
+"           - first frame to extract analysis from (default 0)\n"*/
 " -e <frame>, --end-frame <frame>\n"
 "           - last frame to extract analysis from (default is 0 which means auto end)\n"
 "\n"
@@ -276,25 +274,22 @@ int count_color_bins (FrameInfo *info, int threshold)
 
 float score_frame (FrameInfo *info, int frame_no)
 {
-  float sum_score = 0;
+  float sum_score               = 0;
   float rgb_histogram_count_1   = count_color_bins (info, 1) * 1.0 / NEGL_RGB_HIST_SLOTS;
-  float rgb_histogram_count_10   = count_color_bins (info, 10) * 1.0 / NEGL_RGB_HIST_SLOTS;
+  float rgb_histogram_count_4   = count_color_bins (info, 4) * 1.0 / NEGL_RGB_HIST_SLOTS;
   float audio_energy            = info->audio_energy[1] / 255.0;
   float after_first_40_sec      = frame_no / frame_rate > 40.0 ? 1.0 : 0.0;
   float within_first_third      = frame_no < total_frames / 3 ? 1 : 0;
-  float within_first_half       = frame_no < total_frames / 2 ? 1 : 0;
-  float within_first_ninth      = frame_no < total_frames / 9 ? 1 : 0;
 
-  sum_score += audio_energy           * 0.66;
-  sum_score += rgb_histogram_count_1  * 3;
-  sum_score += rgb_histogram_count_10 * 1;
   sum_score += within_first_third    * 0.33;
-  sum_score += within_first_half     * 0.33;
-  sum_score += within_first_ninth    * 0.33;
 
   /* additional features for scoring long clips */
   if (total_frames / frame_rate > 60 * 30)
-    sum_score += after_first_40_sec  * 2;
+    sum_score += after_first_40_sec  * 0.33;
+
+  sum_score *= audio_energy           * 1;
+  sum_score *= rgb_histogram_count_1;
+  sum_score *= rgb_histogram_count_4;
   return sum_score;
 }
 
