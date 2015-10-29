@@ -263,12 +263,12 @@ static void decode_frame_no (int frame)
   gegl_node_process (store);
 }
 
-int count_color_bins (FrameInfo *info)
+int count_color_bins (FrameInfo *info, int threshold)
 {
   int count = 0;
   int i;
   for (i = 0; i < NEGL_RGB_HIST_SLOTS; i++)
-    if (info->rgb_hist[i] > 1)
+    if (info->rgb_hist[i] > threshold)
       count ++;
 
   return count;
@@ -276,18 +276,26 @@ int count_color_bins (FrameInfo *info)
 
 float score_frame (FrameInfo *info, int frame_no)
 {
-  float rgb_histogram_count = count_color_bins (info) * 1.0 / NEGL_RGB_HIST_SLOTS;
-  float audio_energy = info->audio_energy[1] / 255.0;
-  float after_first_20_sec = frame_no / frame_rate > 20.0 ? 1.0 : 0.0;
-  float within_first_33_percent = frame_no < total_frames / 3 ? 1 : 0;
-#if 0
-  being just before the max audio magnitude
-  being in middle of a clip
-#endif
-  return audio_energy + 
-         rgb_histogram_count     * 5 +
-         after_first_20_sec      * 2 +
-         within_first_33_percent * 2;
+  float sum_score = 0;
+  float rgb_histogram_count_1   = count_color_bins (info, 1) * 1.0 / NEGL_RGB_HIST_SLOTS;
+  float rgb_histogram_count_10   = count_color_bins (info, 10) * 1.0 / NEGL_RGB_HIST_SLOTS;
+  float audio_energy            = info->audio_energy[1] / 255.0;
+  float after_first_40_sec      = frame_no / frame_rate > 40.0 ? 1.0 : 0.0;
+  float within_first_third      = frame_no < total_frames / 3 ? 1 : 0;
+  float within_first_half       = frame_no < total_frames / 2 ? 1 : 0;
+  float within_first_ninth      = frame_no < total_frames / 9 ? 1 : 0;
+
+  sum_score += audio_energy           * 0.66;
+  sum_score += rgb_histogram_count_1  * 3;
+  sum_score += rgb_histogram_count_10 * 1;
+  sum_score += within_first_third    * 0.33;
+  sum_score += within_first_half     * 0.33;
+  sum_score += within_first_ninth    * 0.33;
+
+  /* additional features for scoring long clips */
+  if (total_frames / frame_rate > 60 * 30)
+    sum_score += after_first_40_sec  * 2;
+  return sum_score;
 }
 
 void find_best_thumb (void)
