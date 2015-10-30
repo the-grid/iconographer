@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Rituwall Inc, authoted by pippin@gimp.org
+ * Copyright (c) 2015 Rituwall Inc, authored by pippin@gimp.org
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -23,7 +23,7 @@
 
 #define NEGL_RGB_HEIGHT      42
 #define NEGL_RGB_THEIGHT     42
-#define NEGL_RGB_HIST_DIM    6 // if changing make dim * dim * dim divisible by 3
+#define NEGL_RGB_HIST_DIM    6      // if changing make dim * dim * dim divisible by 3
 #define NEGL_RGB_HIST_SLOTS (NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM)
 #define NEGL_FFT_DIM        64
 
@@ -36,7 +36,6 @@ typedef struct FrameInfo
   uint8_t rgb_hist[NEGL_RGB_HIST_SLOTS];
   uint8_t rgb_mid_col[NEGL_RGB_HEIGHT*3];
   uint8_t rgb_mid_row[NEGL_RGB_HEIGHT*3];
-  //uint8_t audio_fft[NEGL_FFT_DIM*3];
 } FrameInfo;
 
 int frame_start = 0;
@@ -201,20 +200,6 @@ static inline void init_rgb_hist (void)
         Entry *e = l->data;
         int no = e->no;
         int li = i;
-#if 0
-        if (i < NEGL_RGB_HIST_SLOTS / 3)
-        {
-          li = i * 3 + 0;
-        } 
-        else if (i < (NEGL_RGB_HIST_SLOTS * 2) / 3)
-        {
-          li = (i - ((NEGL_RGB_HIST_SLOTS * 1) / 3))* 3 + 1;
-        } 
-        else
-        {
-          li = (i - ((NEGL_RGB_HIST_SLOTS * 2) / 3))* 3 + 2;
-        } 
-#endif
         rgb_hist_shuffler[li] = no;
         rgb_hist_unshuffler[no] = li;
         g_free (e);
@@ -268,20 +253,24 @@ int count_color_bins (FrameInfo *info, int threshold)
 
 float score_frame (FrameInfo *info, int frame_no)
 {
-  float sum_score               = 0;
-  float rgb_histogram_count_1   = count_color_bins (info, 1) * 1.0 / NEGL_RGB_HIST_SLOTS;
-  float audio_energy            = info->audio_energy[1] / 255.0;
-  float after_first_40_sec      = frame_no / frame_rate > 40.0 ? 1.0 : 0.0;
-  float within_first_third      = frame_no < total_frames / 3 ? 1 : 0;
+  float sum_score             = 0.0;
+  float rgb_histogram_count   = count_color_bins (info, 1) * 1.0 / NEGL_RGB_HIST_SLOTS;
+  float audio_energy          = info->audio_energy[1] / 255.0;
+  float new_scene             = (info->rgb_square_diff[0] / 255.0 +
+                                info->rgb_square_diff[1] / 255.0 +
+                                info->rgb_square_diff[2] / 255.0) * 3;
+  float after_first_40_sec    = frame_no / frame_rate > 40.0 ? 1.0 : 0.0;
+  float within_first_third    = frame_no < total_frames / 3 ? 1 : 0;
 
-  sum_score = rgb_histogram_count_1;
-  sum_score += within_first_third    * 0.33;
+  sum_score = rgb_histogram_count;
+  sum_score += within_first_third * 0.33;
 
   /* additional features for scoring long clips */
   if (total_frames / frame_rate > 60 * 30)
     sum_score += after_first_40_sec  * 0.33;
 
   sum_score += audio_energy * 0.1;
+  sum_score += new_scene * 0.2;
   return sum_score;
 }
 
@@ -572,7 +561,8 @@ main (gint    argc,
   {
     GeglNode *save_graph = gegl_node_new ();
     find_best_thumb ();
-    decode_frame_no (frame_thumb-1);
+    if (frame_thumb != 0)
+      decode_frame_no (frame_thumb-1);
     decode_frame_no (frame_thumb);
     GeglNode *readbuf = gegl_node_new_child (save_graph, "operation", "gegl:buffer-source", "buffer", video_frame, NULL);
     GeglNode *save = gegl_node_new_child (save_graph, "operation", "gegl:png-save",
@@ -585,6 +575,9 @@ main (gint    argc,
   if (video_frame)
     g_object_unref (video_frame);
   video_frame = NULL;
+  if (previous_video_frame)
+    g_object_unref (previous_video_frame);
+  previous_video_frame = NULL;
   if (terrain)
     g_object_unref (terrain);
   terrain = NULL;
