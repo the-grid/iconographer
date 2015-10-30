@@ -140,12 +140,6 @@ void parse_args (int argc, char **argv)
       stage = 2;
     }
   }
-
-  printf ("\nvideo: %s\n", video_path);
-  printf ("frames: %i - %i\n", frame_start, frame_end);
-  printf ("thumb: %s\n", thumb_path);
-  printf ("input analysis: %s\n", input_analysis_path);
-  printf ("output analysis: %s\n", output_analysis_path);
 }
 
 #define TERRAIN_STRIDE sizeof(FrameInfo)
@@ -175,8 +169,8 @@ static gint sorted_color (gconstpointer a, gconstpointer b)
 {
   const Entry *ea = a;
   const Entry *eb = b;
-  return (ea->r * 11011  + ea->g * 213 + ea->b) -
-         (eb->r * 11011 + eb->g * 213  + eb->b);
+  return (ea->g * 110011 + ea->r * 213 + ea->b) -
+         (eb->g * 110011 + eb->r * 213 + eb->b);
 }
 
 static inline void init_rgb_hist (void)
@@ -276,20 +270,18 @@ float score_frame (FrameInfo *info, int frame_no)
 {
   float sum_score               = 0;
   float rgb_histogram_count_1   = count_color_bins (info, 1) * 1.0 / NEGL_RGB_HIST_SLOTS;
-  float rgb_histogram_count_4   = count_color_bins (info, 4) * 1.0 / NEGL_RGB_HIST_SLOTS;
   float audio_energy            = info->audio_energy[1] / 255.0;
   float after_first_40_sec      = frame_no / frame_rate > 40.0 ? 1.0 : 0.0;
   float within_first_third      = frame_no < total_frames / 3 ? 1 : 0;
 
+  sum_score = rgb_histogram_count_1;
   sum_score += within_first_third    * 0.33;
 
   /* additional features for scoring long clips */
   if (total_frames / frame_rate > 60 * 30)
     sum_score += after_first_40_sec  * 0.33;
 
-  sum_score *= audio_energy           * 1;
-  sum_score *= rgb_histogram_count_1;
-  sum_score *= rgb_histogram_count_4;
+  sum_score += audio_energy * 0.1;
   return sum_score;
 }
 
