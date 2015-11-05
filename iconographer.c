@@ -260,6 +260,7 @@ float score_frame (FrameInfo *info, int frame_no)
                                 info->rgb_square_diff[1] / 255.0 +
                                 info->rgb_square_diff[2] / 255.0) * 3;
   float after_first_40_sec    = frame_no / frame_rate > 40.0 ? 1.0 : 0.0;
+  float after_first_12_sec    = frame_no / frame_rate > 12.0 ? 1.0 : 0.0;
   float within_first_third    = frame_no < total_frames / 3 ? 1 : 0;
 
   sum_score = rgb_histogram_count;
@@ -268,9 +269,11 @@ float score_frame (FrameInfo *info, int frame_no)
   /* additional features for scoring long clips */
   if (total_frames / frame_rate > 60 * 30)
     sum_score += after_first_40_sec  * 0.33;
+  else
+    sum_score += after_first_12_sec  * 0.33;
 
-  sum_score += audio_energy * 0.1;
-  sum_score += new_scene * 0.2;
+  sum_score += audio_energy * 0.15;
+  sum_score += new_scene * 0.02;
   return sum_score;
 }
 
