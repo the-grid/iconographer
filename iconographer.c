@@ -260,16 +260,15 @@ float score_frame (FrameInfo *info, int frame_no)
                                 info->rgb_square_diff[1] / 255.0 +
                                 info->rgb_square_diff[2] / 255.0) * 3;
   float after_first_40_sec    = frame_no / frame_rate > 40.0 ? 1.0 : 0.3;
-  float after_first_12_sec    = frame_no / frame_rate > 12.0 ? 1.0 : 0.04;
+  float after_first_12_sec    = frame_no / frame_rate > 12.0 ? 1.0 : 0.1;
   float within_first_third    = frame_no < total_frames / 3  ? 1 : 0.6;
 
   sum_score = rgb_histogram_count;
-  sum_score *= within_first_third * 0.33;
+  sum_score *= within_first_third  * 0.33;
   sum_score *= after_first_40_sec  * 0.33;
   sum_score *= after_first_12_sec  * 0.33;
-
-  sum_score *= (audio_energy + 0.2); // * 0.15;
-  sum_score *= (new_scene + 0.05);
+  sum_score *= (audio_energy       + 0.2);
+  sum_score *= (new_scene          + 0.05);
   return sum_score;
 }
 
