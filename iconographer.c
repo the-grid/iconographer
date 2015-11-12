@@ -254,7 +254,7 @@ int count_color_bins (FrameInfo *info, int threshold)
 float score_frame (FrameInfo *info, int frame_no)
 {
   float sum_score             = 0.0;
-  float rgb_histogram_count   = count_color_bins (info, 1) * 1.0 / NEGL_RGB_HIST_SLOTS;
+  float rgb_histogram_count   = count_color_bins (info, 2) * 1.0 / NEGL_RGB_HIST_SLOTS;
   float audio_energy          = info->audio_energy[1] / 255.0;
   float new_scene             = (info->rgb_square_diff[0] / 255.0 +
                                 info->rgb_square_diff[1] / 255.0 +
@@ -439,7 +439,7 @@ main (gint    argc,
            int slot;
            for (slot = 0; slot < NEGL_RGB_HIST_SLOTS; slot ++)
            {
-     	     int val = (rgb_hist[slot] / (second_max_hist * 0.9 + max_hist * 0.1)) * 255;
+     	     int val = (sqrtf(rgb_hist[slot]) / (sqrtf(second_max_hist) * 0.9 + sqrtf(max_hist) * 0.1)) * 255;
              if (val > 255)
                val = 255; 
      	     info.rgb_hist[rgb_hist_shuffle (slot)] = val;
