@@ -267,7 +267,7 @@ float score_frame (FrameInfo *info, int frame_no)
   sum_score *= within_first_third  * 0.33;
   sum_score *= after_first_40_sec  * 0.33;
   sum_score *= after_first_12_sec  * 0.33;
-  sum_score *= (audio_energy       + 0.3);
+  sum_score *= (audio_energy       + 0.1) * 0.7;
   sum_score *= (new_scene          + 0.05);
   return sum_score;
 }
