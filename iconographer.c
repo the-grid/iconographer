@@ -254,23 +254,20 @@ int count_color_bins (FrameInfo *info, int threshold)
 float score_frame (FrameInfo *info, int frame_no)
 {
   float sum_score             = 0.0;
-  float rgb_histogram_count   = count_color_bins (info, 2) * 1.0 / NEGL_RGB_HIST_SLOTS;
+  float rgb_histogram_count   = count_color_bins (info, 1) * 1.0 / NEGL_RGB_HIST_SLOTS;
   float audio_energy          = info->audio_energy[1] / 255.0;
   float new_scene             = (info->rgb_square_diff[0] / 255.0 +
                                 info->rgb_square_diff[1] / 255.0 +
                                 info->rgb_square_diff[2] / 255.0) * 3;
-  float after_first_40_sec    = frame_no / frame_rate > 40.0 ? 1.0 : 0.0;
-  float after_first_12_sec    = frame_no / frame_rate > 12.0 ? 1.0 : 0.0;
+  float after_first_40_sec    = frame_no / frame_rate > 40.0 ? 1.0 : 0.04;
+  float after_first_12_sec    = frame_no / frame_rate > 12.0 ? 1.0 : 0.04;
   float within_first_third    = frame_no < total_frames / 3 ? 1 : 0;
 
   sum_score = rgb_histogram_count;
   sum_score += within_first_third * 0.33;
 
-  /* additional features for scoring long clips */
-  if (total_frames / frame_rate > 60 * 30)
-    sum_score += after_first_40_sec  * 0.33;
-  else
-    sum_score += after_first_12_sec  * 0.33;
+  sum_score *= after_first_40_sec  * 0.33;
+  sum_score *= after_first_12_sec  * 0.33;
 
   sum_score *= (audio_energy + 0.2); // * 0.15;
   sum_score *= (new_scene + 0.05);
