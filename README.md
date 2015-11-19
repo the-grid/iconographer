@@ -15,42 +15,44 @@ Example usage:
 
 Create thumb.png from video.ogv
 
-$ iconographer video.ogv thumb.png
+    $ iconographer video.ogv thumb.png
 
 Create thumb.png from video.ogv, and store analysis in analysis.png
 
-$ iconographer video.ogv -oa analysis.png thumb.png
+    $ iconographer video.ogv -oa analysis.png thumb.png
 
 Create and store analysis in analysis.png from video.ogv
 
-$ iconographer video.ogv -oa analysis.png
+    $ iconographer video.ogv -oa analysis.png
 
 Use existing analysis analysis.png with video.ogv and store best frame in
 thumb.png
 
-$ iconographer video.ogv -ia analysis.png thumb.png
+    $ iconographer video.ogv -ia analysis.png thumb.png
 
 Stop analysing after 120 seconds if video is not done yet, store resulting
 thumb in thumb.png
 
-$ iconographer video.ogv thumb.png -t 120
+    $ iconographer video.ogv thumb.png -t 120
 
 Make last frame for analysis/consideration be frame number 420
 
-$ iconographer video.ogv thumb.png -t 120
+    $ iconographer video.ogv thumb.png -t 120
 
 Optional arguments can be passed in addition
 
- -p  show progress in terminal
- -t  timeout, in seconds - only keep extracting frame data until this much time
-     has passed
- -e  end-frame last frame in video to extract, 0; the default means all frames
-     of input video
- -d  compute sum of pixel differences (makes computation per frame take longer)
+     -p  show progress in terminal
+     -t  timeout, in seconds - only keep extracting frame data until this much time
+         has passed
+     -e  end-frame last frame in video to extract, 0; the default means all frames
+         of input video
+     -d  compute sum of pixel differences (makes computation per frame take longer)
 
 The analysis images contain a scanline per frame of the original video,
 interpreted as 24bit (8bpc) RGB data the following struct maps the
 datastructure:
+
+```c
 
 #define NEGL_RGB_HEIGHT      42
 #define NEGL_RGB_THEIGHT     42
@@ -66,5 +68,4 @@ typedef struct FrameInfo
   uint8_t rgb_mid_col[NEGL_RGB_HEIGHT*3];
   uint8_t rgb_mid_row[NEGL_RGB_HEIGHT*3];
 } FrameInfo;
-
-The 
+```
