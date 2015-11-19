@@ -15,7 +15,7 @@
  */
 
 #include <gegl.h>
-#include <gegl-audio.h>
+#include <gegl-audio-fragment.h>
 #include <glib/gprintf.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -485,7 +485,7 @@ main (gint    argc,
              GEGL_AUTO_ROWSTRIDE,
              GEGL_ABYSS_NONE);
 
-          { GeglAudio *audio = NULL;
+          { GeglAudioFragment *audio = NULL;
             int i;
             gegl_node_get (load, "audio", &audio, NULL);
             if (audio)
