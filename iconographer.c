@@ -496,12 +496,12 @@ main (gint    argc,
               float right_sum = 0;
               for (i = 0; i < audio->samples; i++)
               {
-                left_sum += fabs (audio->left[i]);
-                right_sum += fabs (audio->right[i]);
-                if (fabs (audio->left[i]) > left_max)
-                  left_max = fabs (audio->left[i]);
-                if (fabs (audio->right[i]) > right_max)
-                  right_max = fabs (audio->right[i]);
+                left_sum += fabs (audio->data[0][i]);
+                right_sum += fabs (audio->data[1][i]);
+                if (fabs (audio->data[0][i]) > left_max)
+                  left_max = fabs (audio->data[0][i]);
+                if (fabs (audio->data[1][i]) > right_max)
+                  right_max = fabs (audio->data[1][i]);
               }
               left_sum /= audio->samples;
               right_sum /= audio->samples;
