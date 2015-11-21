@@ -494,7 +494,8 @@ main (gint    argc,
               float right_max = 0;
               float left_sum = 0;
               float right_sum = 0;
-              for (i = 0; i < audio->samples; i++)
+              int sample_count = gegl_audio_fragment_get_sample_count (audio);
+              for (i = 0; i < sample_count; i++)
               {
                 left_sum += fabs (audio->data[0][i]);
                 right_sum += fabs (audio->data[1][i]);
@@ -503,8 +504,8 @@ main (gint    argc,
                 if (fabs (audio->data[1][i]) > right_max)
                   right_max = fabs (audio->data[1][i]);
               }
-              left_sum /= audio->samples;
-              right_sum /= audio->samples;
+              left_sum /= sample_count;
+              right_sum /= sample_count;
               left_max = left_sum;
               right_max = right_sum;
              
