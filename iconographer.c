@@ -30,10 +30,10 @@
 /* each row in the video terrain is the following 8bit RGB (24bit) data: */
 typedef struct FrameInfo  
 {
-  uint8_t rgb_thumb[NEGL_RGB_THEIGHT*3];
-  uint8_t rgb_square_diff[3];
   uint8_t audio_energy[3]; 
+  uint8_t rgb_square_diff[3];
   uint8_t rgb_hist[NEGL_RGB_HIST_SLOTS];
+  uint8_t rgb_thumb[NEGL_RGB_THEIGHT*3];
   uint8_t rgb_mid_col[NEGL_RGB_HEIGHT*3];
   uint8_t rgb_mid_row[NEGL_RGB_HEIGHT*3];
 } FrameInfo;
