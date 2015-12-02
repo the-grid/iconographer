@@ -58,18 +58,18 @@ void usage()
 {
       printf ("usage: negl [options] <video> [thumb]\n"
 " -p, --progress   - display info about current frame/progress in terminal\n"
-" -oa <analysis-path>, --output-analysis\n"
-"                  - specify path for analysis dump to write (a PNG)\n"
-" -ia <analysis-path>, --input-analysis\n"
-"                  - specify path for analysis dump to read (a PNG)\n"
-" -d, --sum-diff\n"
-"           - sum up all pixel differences for neighbour frames (defaults to not do it)\n"
-"\n"
-" -t, --timeout - stop doing frame info dump after this mant seconds have passed)\n"
+" -a <analysis-path>, ---analysis\n"
+"                  - specify path for PNG analsysis dump, if the file already exists it will be reused.\n"
+"                    after the analysis phase (at end of timeout/video) a temporal strata image of the\n"
+"                    video will be stored.\n"
+" -t, --timeout - stop doing frame info dump after this many seconds have passed)\n"
 /*" -s <frame>, --start-frame <frame>\n"
 "           - first frame to extract analysis from (default 0)\n"*/
 " -e <frame>, --end-frame <frame>\n"
 "           - last frame to extract analysis from (default is 0 which means auto end)\n"
+" -d, --sum-diff\n"
+"           - sum up all pixel differences for neighbour frames (defaults to not do it, since it makes processing take more time.)\n"
+"\n"
 "\n"
 "Options can also follow then video (and thumb) arguments.\n"
 "\n");
@@ -106,6 +106,14 @@ void parse_args (int argc, char **argv)
       input_analysis_path = g_strdup (argv[i+1]);
       i++;
     } 
+    else if (g_str_equal (argv[i], "-a") ||
+        g_str_equal (argv[i], "--analysis"))
+    {
+      input_analysis_path = g_strdup (argv[i+1]);
+      output_analysis_path = g_strdup (argv[i+1]);
+      i++;
+    } 
+
     else if (g_str_equal (argv[i], "-s") ||
              g_str_equal (argv[i], "--start-frame"))
     {
@@ -331,7 +339,7 @@ main (gint    argc,
                                 TERRAIN_WIDTH,
                                 frame_end - frame_start + 1};
 
-  if (input_analysis_path)
+  if (input_analysis_path && g_file_test (input_analysis_path, G_FILE_TEST_IS_REGULAR))
   {
     GeglNode *load_graph = gegl_node_new ();
     GeglNode *load = gegl_node_new_child (load_graph, "operation", "gegl:load", "path", input_analysis_path, NULL);
