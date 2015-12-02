@@ -21,8 +21,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define NEGL_RGB_HEIGHT      42
-#define NEGL_RGB_THEIGHT     42
+#define NEGL_RGB_HEIGHT     42
+#define NEGL_RGB_THEIGHT    42
 #define NEGL_RGB_HIST_DIM    6      // if changing make dim * dim * dim divisible by 3
 #define NEGL_RGB_HIST_SLOTS (NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM)
 #define NEGL_FFT_DIM        64
@@ -47,10 +47,11 @@ char *video_path = NULL;
 char *thumb_path = NULL;
 char *input_analysis_path = NULL;
 char *output_analysis_path = NULL;
-int show_progress = 0;
-int sum_diff = 0;
-int frame_thumb = 0;
-int time_out = 0;
+int   show_progress = 0;
+int   sum_diff = 0;
+int   frame_thumb = 0;
+int   time_out = 0;
+int   horizontal = 0;
 
 long babl_ticks (void);
 
@@ -62,6 +63,7 @@ void usage()
 "                  - specify path for PNG analsysis dump, if the file already exists it will be reused.\n"
 "                    after the analysis phase (at end of timeout/video) a temporal strata image of the\n"
 "                    video will be stored.\n"
+" -h, --horizontal   store a horizontal strata instead of vertical\n"
 " -t, --timeout - stop doing frame info dump after this many seconds have passed)\n"
 /*" -s <frame>, --start-frame <frame>\n"
 "           - first frame to extract analysis from (default 0)\n"*/
@@ -94,6 +96,11 @@ void parse_args (int argc, char **argv)
         g_str_equal (argv[i], "--progress"))
     {
       show_progress = 1;
+    }
+    else if (g_str_equal (argv[i], "-h") ||
+        g_str_equal (argv[i], "--horizontal"))
+    {
+      horizontal = 1;
     }
     else if (g_str_equal (argv[i], "-d") ||
         g_str_equal (argv[i], "--sum-diff"))
@@ -289,7 +296,11 @@ void find_best_thumb (void)
   for (frame = 0; frame < frame_end; frame++)
   {
     FrameInfo info;
-    GeglRectangle terrain_row = {0, frame-frame_start, TERRAIN_WIDTH, 1};
+    GeglRectangle terrain_row;
+    if (horizontal)
+      terrain_row = (GeglRectangle){frame-frame_start, 0, 1, TERRAIN_WIDTH};
+    else 
+      terrain_row = (GeglRectangle){0, frame-frame_start, TERRAIN_WIDTH, 1};
     gegl_buffer_get (terrain, &terrain_row, 1.0, babl_format("RGB u8"),
                      &info, GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
     float score = score_frame (&info, frame);
@@ -327,7 +338,6 @@ main (gint    argc,
   gegl_node_link_many (load, store, NULL);
 
   decode_frame_no (0); /* we issue a processing/decoding of a frame - to get metadata */
-
   {
     gegl_node_get (load, "frame-rate", &frame_rate, NULL);
     total_frames = 0; gegl_node_get (load, "frames", &total_frames, NULL);
@@ -335,7 +345,14 @@ main (gint    argc,
     if (frame_end == 0)
       frame_end = total_frames;
   }
-  GeglRectangle terrain_rect = {0, 0,
+  GeglRectangle terrain_rect;
+
+  if (horizontal)
+   terrain_rect = (GeglRectangle){0, 0,
+                                frame_end - frame_start + 1,
+                                TERRAIN_WIDTH};
+  else
+   terrain_rect = (GeglRectangle){0, 0,
                                 TERRAIN_WIDTH,
                                 frame_end - frame_start + 1};
 
@@ -378,7 +395,12 @@ main (gint    argc,
             fflush (stdout);
           }
 
-          GeglRectangle terrain_row = {0, frame-frame_start, TERRAIN_WIDTH, 1};
+          GeglRectangle terrain_row;
+          
+          if (horizontal)
+            terrain_row = (GeglRectangle){frame-frame_start, 0, 1, TERRAIN_WIDTH};
+          else
+            terrain_row = (GeglRectangle){0, frame-frame_start, TERRAIN_WIDTH, 1};
 
 	  decode_frame_no (frame);
 
@@ -543,7 +565,10 @@ main (gint    argc,
               babl_ticks()/1000.0/1000.0 > time_out)
             {
                frame_end = frame;
-               terrain_rect.height = frame_end - frame_start + 1;
+               if (horizontal)
+                 terrain_rect.width = frame_end - frame_start + 1;
+               else
+                 terrain_rect.height = frame_end - frame_start + 1;
                gegl_buffer_set_extent (terrain, &terrain_rect);
             }
         }
