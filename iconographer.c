@@ -502,15 +502,29 @@ main (gint    argc,
              GEGL_AUTO_ROWSTRIDE,
              GEGL_ABYSS_NONE);
 
-          mid_col.x = 0;
-          static float vpos = 0.0;
-          mid_col.y = 
-             gegl_buffer_get_extent (video_frame)-> height * 1.0 *
-              NEGL_RGB_THEIGHT / gegl_buffer_get_extent (video_frame)->width * vpos;
-          vpos += 0.03;
-          if (vpos > 1.0) vpos = 0.0;
-          mid_col.height = 1;
-          mid_col.width = NEGL_RGB_THEIGHT;
+            static float vpos = 0.0;
+          if (horizontal)
+          {
+            mid_col.y = 0;
+            mid_col.x = 
+               gegl_buffer_get_extent (video_frame)-> width * 1.0 *
+               NEGL_RGB_THEIGHT / gegl_buffer_get_extent (video_frame)->width * vpos;
+            vpos += 0.03;
+            if (vpos > 1.0) vpos = 0.0;
+            mid_col.width = 1;
+            mid_col.height = NEGL_RGB_THEIGHT;
+          }
+          else
+          {
+            mid_col.x = 0;
+            mid_col.y = 
+               gegl_buffer_get_extent (video_frame)-> height * 1.0 *
+               NEGL_RGB_THEIGHT / gegl_buffer_get_extent (video_frame)->width * vpos;
+            vpos += 0.03;
+            if (vpos > 1.0) vpos = 0.0;
+            mid_col.height = 1;
+            mid_col.width = NEGL_RGB_THEIGHT;
+          }
           gegl_buffer_get (video_frame, &mid_col, 
              1.0 * NEGL_RGB_THEIGHT / gegl_buffer_get_extent (video_frame)->width,
              babl_format ("R'G'B' u8"),
