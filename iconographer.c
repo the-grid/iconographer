@@ -367,8 +367,11 @@ main (gint    argc,
 
           if (show_progress)
           {
+            double percent_full = 100.0 * (frame-frame_start) / (frame_end-frame_start);
+            double percent_time = time_out?100.0 * babl_ticks()/1000.0/1000.0 / time_out:0.0;
             fprintf (stdout, "\r%2.1f%% %i/%i (%i)", 
-                     (frame-frame_start) * 100.0 / (frame_end-frame_start),
+                     percent_full>percent_time?percent_full:percent_time,
+                     //(frame-frame_start) * 100.0 / (frame_end-frame_start),
                      frame-frame_start,
                      frame_end-frame_start,
                      frame);
