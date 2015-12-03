@@ -44,6 +44,7 @@ Optional arguments can be passed in addition
      -p  show progress in terminal
      -t  timeout, in seconds - only keep extracting frame data until this much time
          has passed
+     -s  start-frame first frame in video to extract
      -e  end-frame last frame in video to extract, 0; the default means all frames
          of input video
      -h, --horizontal   store a horizontal strata instead of vertical.
@@ -60,7 +61,11 @@ video. Valid entries in the format string are:
     mid-row 20
     mid-col 30
 
-where the numbers represens the number of pixels to store from the video per frame.
+where the numbers represents the number of pixels to store from the video per frame.
+
+Example analysis of a segment of the movie Sintel.
+
+![Example analysis](http://pippin.gimp.org/tmp/sintel-vertical.png)
 
 For thumbnail extraction to work properly the first element of the format
 string should be the histogram analysis, the expected defaults also map to the
