@@ -39,7 +39,8 @@ typedef struct FrameInfo
   uint8_t rgb_mid_row[NEGL_RGB_HEIGHT*3];
 } FrameInfo;
 
-char *format="histogram audio thumb";
+char *format="histogram audio thumb 40 mid-col 20";
+         //the default format is: "histogram audio thumb 40 mid-row 20 mid-col 20"
 
 int frame_start = 0;
 int frame_end   = 0;
@@ -337,7 +338,7 @@ static void extract_mid_col (GeglBuffer *buffer, void *rgb_mid_col, int samples)
      GEGL_ABYSS_NONE);
 }
 
-static void extract_thumb (GeglBuffer *buffer, void *rgb_thumb, int samples)
+static void extract_thumb (GeglBuffer *buffer, void *rgb_thumb, int samples, int samples2)
 {
   GeglRectangle thumb_scan;
   static float vpos = 0.0;
@@ -347,7 +348,7 @@ static void extract_thumb (GeglBuffer *buffer, void *rgb_thumb, int samples)
     thumb_scan.x = 
        gegl_buffer_get_extent (buffer)-> width * 1.0 *
        samples / gegl_buffer_get_extent (buffer)->width * vpos;
-    vpos += 0.03;
+    vpos += (1.0/samples2);
     if (vpos > 1.0) vpos = 0.0;
     thumb_scan.width = 1;
     thumb_scan.height = samples;
@@ -358,7 +359,7 @@ static void extract_thumb (GeglBuffer *buffer, void *rgb_thumb, int samples)
     thumb_scan.y = 
        gegl_buffer_get_extent (buffer)-> height * 1.0 *
        samples / gegl_buffer_get_extent (buffer)->width * vpos;
-    vpos += 0.03;
+    vpos += (1.0/samples2);
     if (vpos > 1.0) vpos = 0.0;
     thumb_scan.height = 1;
     thumb_scan.width = samples;
@@ -649,12 +650,20 @@ main (gint    argc,
                }
                else if (!strcmp (word->str, "thumb"))
                {
-                  int samples = NEGL_RGB_THEIGHT;
+                  int samples  = NEGL_RGB_THEIGHT;
+                  int samples2;
+
                   if (p[1] >= '0' && p[1] <= '9')
                   {
                     samples = g_strtod (&p[1], &p);
                   }
-                  extract_thumb (video_frame, &(buffer)[buffer_pos], samples);
+
+                  if (horizontal)
+                    samples2 = samples * gegl_buffer_get_width (video_frame)/gegl_buffer_get_height(video_frame);
+                  else
+                    samples2 = samples * gegl_buffer_get_height (video_frame)/gegl_buffer_get_width(video_frame);
+
+                  extract_thumb (video_frame, &(buffer)[buffer_pos], samples, samples2);
                   buffer_pos += samples*3;
                }
                else if (!strcmp (word->str, "audio"))

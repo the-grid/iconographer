@@ -46,7 +46,8 @@ Optional arguments can be passed in addition
          has passed
      -e  end-frame last frame in video to extract, 0; the default means all frames
          of input video
-     -d  compute sum of pixel differences (makes computation per frame take longer)
+     -f  format string, specify which forms of analysis to put in the analysis file,
+         the default format is: "histogram audio thumb 40 mid-row 20"
 
 The analysis images contain a scanline per frame of the original video,
 interpreted as 24bit (8bpc) RGB data the following struct maps the
