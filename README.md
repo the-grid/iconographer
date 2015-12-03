@@ -13,31 +13,31 @@ probably some other forms of content based analsysis.
 Example usage:
 --------------
 
-Create thumb.png from video.ogv
+Create frame.png from video.ogv
 
-    $ iconographer video.ogv thumb.png
+    $ iconographer video.ogv frame.png
 
-Create thumb.png from video.ogv, and store analysis in analysis.png
+Create frame.png from video.ogv, and store analysis in analysis.png
 
-    $ iconographer video.ogv -oa analysis.png thumb.png
+    $ iconographer video.ogv -oa analysis.png frame.png
 
 Create and store analysis in analysis.png from video.ogv
 
     $ iconographer video.ogv -oa analysis.png
 
 Use existing analysis analysis.png with video.ogv and store best frame in
-thumb.png
+frame.png
 
-    $ iconographer video.ogv -ia analysis.png thumb.png
+    $ iconographer video.ogv -ia analysis.png frame.png
 
 Stop analysing after 120 seconds if video is not done yet, store resulting
-thumb in thumb.png
+frame in frame.png
 
-    $ iconographer video.ogv thumb.png -t 120
+    $ iconographer video.ogv frame.png -t 120
 
 Make last frame for analysis/consideration be frame number 420
 
-    $ iconographer video.ogv thumb.png -t 120
+    $ iconographer video.ogv frame.png -t 120
 
 Optional arguments can be passed in addition
 
@@ -56,7 +56,7 @@ interpreted as 24bit (8bpc) RGB data, or just as visual thumbnail references for
 video. Valid entries in the format string are:
 
     histogram
-    audio
+    audio 4
     thumb 50
     mid-row 20
     mid-col 30
@@ -67,15 +67,15 @@ Example analysis of a segment of the movie Sintel.
 
 ![Example analysis](http://pippin.gimp.org/tmp/sintel-vertical.png)
 
-For thumbnail extraction to work properly the first element of the format
-string should be the histogram analysis, the expected defaults also map to the
-following c in-memory structure.
+For representative frame extraction to work properly the first element of the
+format string should be the histogram analysis, the expected defaults also map
+to the following c in-memory structure.
 ```c
-#define NEGL_RGB_HIST_DIM    6 
-#define NEGL_RGB_HIST_SLOTS (NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM)
+#define RGB_HIST_DIM    6 
+#define RGB_HIST_SLOTS (RGB_HIST_DIM * RGB_HIST_DIM * RGB_HIST_DIM)
 typedef struct FrameInfo
 {
-  uint8_t rgb_hist[NEGL_RGB_HIST_SLOTS];
+  uint8_t rgb_hist[RGB_HIST_SLOTS];
   uint8_t rgb_square_diff[3];
   uint8_t audio_energy[3];
 } FrameInfo;
