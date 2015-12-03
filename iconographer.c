@@ -358,7 +358,7 @@ static void extract_thumb (GeglBuffer *buffer, void *rgb_thumb, int samples, int
 }
 
 
-void extract_audio_energy (GeglAudioFragment *audio, uint8_t *audio_energy)
+void extract_audio_energy (GeglAudioFragment *audio, uint8_t *audio_energy, int dups)
 {
   int i;
   float left_max = 0;
@@ -387,11 +387,13 @@ void extract_audio_energy (GeglAudioFragment *audio, uint8_t *audio_energy)
   if (right_max > 255)
     right_max = 255;         
 
-  audio_energy[0] = left_max;
-  audio_energy[1] = (left_max+right_max)/2;
-  audio_energy[2] = right_max;
+  for (i = 0; i < dups; i ++)
+  {
+    audio_energy[3*i+0] = left_max;
+    audio_energy[3*i+1] = (left_max+right_max)/2;
+    audio_energy[3*i+2] = right_max;
+  }
 }
-
 
 void extract_mid_row (GeglBuffer *buffer, void *rgb_mid_row, int samples)
 {
@@ -651,14 +653,20 @@ main (gint    argc,
                }
                else if (!strcmp (word->str, "audio"))
                {
-                 GeglAudioFragment *audio = NULL;
+                  int dups = 1;
+                  GeglAudioFragment *audio = NULL;
+
+                  if (p[1] >= '0' && p[1] <= '9')
+                  {
+                    dups = g_strtod (&p[1], &p);
+                  }
                  gegl_node_get (load, "audio", &audio, NULL);
                  if (audio)
                   {
-                    extract_audio_energy (audio, &buffer[buffer_pos]);
+                    extract_audio_energy (audio, &buffer[buffer_pos], dups);
                     g_object_unref (audio);
                   }
-                 buffer_pos+=3;
+                 buffer_pos+=3 * dups;
                }
                g_string_assign (word, "");
             }
