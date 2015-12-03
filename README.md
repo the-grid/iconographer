@@ -7,11 +7,19 @@ a scanline per frame in the original the second analyses this data dump
 aiming to get a good salient/representative frame suitable for use
 for example as a thumbnail.
 
-The analysis from stage one is also suitable for scene-detection and
-probably some other forms of content based analsysis.
+![Example analysis](http://pippin.gimp.org/tmp/sintel-horizontal.png)
+
+Iconographer works by extracting data for each frame of video, capturing an 3d
+RGB histogram for the color distribution, the audio magnitude and total squared
+pixel difference. The analysis phase can be used to extract visual single frame
+video thumbnails usable for data in for example video seekbars.
+
+Iconographer makes used of the extracted data in a second pass, weighing
+criteria like good distribution of colors, not too early perhaps where the
+audio track is quite load, soon after a scene change to determine a
+representative frame to select.
 
 Example usage:
---------------
 
 Create frame.png from video.ogv
 
@@ -55,17 +63,14 @@ video. Valid entries in the format string are:
 
 where the numbers represents the number of pixels to store from the video per frame.
 
-Horizontal, thumbnail only render from part of movie sintel:
 
-![Example analysis](http://pippin.gimp.org/tmp/sintel-horizontal.png)
-
-And a vertical analysis, with default format setting:
+A run with the default settings on the same segment of Sintel that was used above.
 
 ![Example analysis](http://pippin.gimp.org/tmp/sintel-vertical.png)
 
 For representative frame extraction to work properly the first element of the
-format string should be the histogram analysis, the expected defaults also map
-to the following c in-memory structure.
+format string should be the "histogram", the expected default format maps
+to the following c in-memory structure. 
 ```c
 #define RGB_HIST_DIM    6 
 #define RGB_HIST_SLOTS (RGB_HIST_DIM * RGB_HIST_DIM * RGB_HIST_DIM)
@@ -74,5 +79,6 @@ typedef struct FrameInfo
   uint8_t rgb_hist[RGB_HIST_SLOTS];
   uint8_t rgb_square_diff[3];
   uint8_t audio_energy[3];
+  uint8_t thumb[3 * 40];
+  uint8_t mid_col[3 * 20];
 } FrameInfo;
-```
