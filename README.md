@@ -18,17 +18,9 @@ Create frame.png from video.ogv
     $ iconographer video.ogv frame.png
 
 Create frame.png from video.ogv, and store analysis in analysis.png
+if analysis.png already exists it will be reused instead of recreated.
 
-    $ iconographer video.ogv -oa analysis.png frame.png
-
-Create and store analysis in analysis.png from video.ogv
-
-    $ iconographer video.ogv -oa analysis.png
-
-Use existing analysis analysis.png with video.ogv and store best frame in
-frame.png
-
-    $ iconographer video.ogv -ia analysis.png frame.png
+    $ iconographer video.ogv -a analysis.png frame.png
 
 Stop analysing after 120 seconds if video is not done yet, store resulting
 frame in frame.png
