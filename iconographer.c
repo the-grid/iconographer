@@ -33,13 +33,9 @@ typedef struct FrameInfo
   uint8_t rgb_hist[NEGL_RGB_HIST_SLOTS];
   uint8_t rgb_square_diff[3];
   uint8_t audio_energy[3];
-  uint8_t text_track[8];
-  uint8_t rgb_thumb[NEGL_RGB_THEIGHT*3];
-  uint8_t rgb_mid_col[NEGL_RGB_HEIGHT*3];
-  uint8_t rgb_mid_row[NEGL_RGB_HEIGHT*3];
 } FrameInfo;
 
-char *format="histogram audio thumb 40 mid-col 20";
+char *format="histogram diff audio thumb 40 mid-col 20";
 
 int frame_start = 0;
 int frame_end   = 0;
@@ -60,22 +56,22 @@ long  babl_ticks (void);
 void  usage()
 {
       printf ("usage: negl [options] <video> [thumb]\n"
-" -p, --progress   - display info about current frame/progress in terminal\n"
+" -p, --progress   - show /progress in terminal\n"
 " -a <analysis-path>, ---analysis\n"
-"                  - specify path for PNG analsysis dump, if the file already exists it will be reused.\n"
-"                    after the analysis phase (at end of timeout/video) a temporal strata image of the\n"
-"                    video will be stored.\n"
+"                  - path to store information extraction result, if the file\n"
+"                    already exists it will be reused for best frame analysis\n"
+"                    instead of a full dump happening again.\n"
 " -h, --horizontal   store a horizontal strata instead of vertical\n"
 " -t, --timeout - stop doing frame info dump after this many seconds have passed)\n"
 /*" -s <frame>, --start-frame <frame>\n"
 "           - first frame to extract analysis from (default 0)\n"*/
 " -e <frame>, --end-frame <frame>\n"
 "           - last frame to extract analysis from (default is 0 which means auto end)\n"
-" -d, --sum-diff\n"
-"           - sum up all pixel differences for neighbour frames (defaults to not do it, since it makes processing take more time.)\n"
+" -f, --format - format string, specify which forms of analysis to put in the analysis file,\n"
+"                the default format is: \"histogram audio thumb 40 mid-col 20\"\n"
 "\n"
 "\n"
-"Options can also follow then video (and thumb) arguments.\n"
+"Options can also follow the video (and thumb) arguments.\n"
 "\n");
   exit (0);
 }
@@ -86,12 +82,6 @@ void parse_args (int argc, char **argv)
   int stage = 0;
   for (i = 1; i < argc; i++)
   {
-    if (g_str_equal (argv[i], "-oa") ||
-        g_str_equal (argv[i], "--output-analysis"))
-    {
-      output_analysis_path = g_strdup (argv[i+1]);
-      i++;
-    } 
     if (g_str_equal (argv[i], "-f")||
         g_str_equal (argv[i], "--format"))
     {
@@ -113,12 +103,6 @@ void parse_args (int argc, char **argv)
     {
       horizontal = 0;
     }
-    else if (g_str_equal (argv[i], "-ia") ||
-        g_str_equal (argv[i], "--input-analysis"))
-    {
-      input_analysis_path = g_strdup (argv[i+1]);
-      i++;
-    } 
     else if (g_str_equal (argv[i], "-a") ||
         g_str_equal (argv[i], "--analysis"))
     {

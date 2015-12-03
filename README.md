@@ -46,17 +46,19 @@ Optional arguments can be passed in addition
          has passed
      -e  end-frame last frame in video to extract, 0; the default means all frames
          of input video
+     -h, --horizontal   store a horizontal strata instead of vertical.
      -f  format string, specify which forms of analysis to put in the analysis file,
          the default format is: "histogram audio thumb 40 mid-col 20"
 
 The analysis images contain a scanline per frame of the original video,
 interpreted as 24bit (8bpc) RGB data, or just as visual thumbnail references for the
 video. Valid entries in the format string are:
-  histogram
-  audio
-  thumb 50
-  mid-row 20
-  mid-col 30
+
+    histogram
+    audio
+    thumb 50
+    mid-row 20
+    mid-col 30
 
 where the numbers represens the number of pixels to store from the video per frame.
 
