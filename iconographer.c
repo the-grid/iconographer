@@ -27,17 +27,19 @@
 #define NEGL_RGB_HIST_SLOTS (NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM)
 #define NEGL_FFT_DIM        64
 
-
 /* each row in the video terrain is the following 8bit RGB (24bit) data: */
 typedef struct FrameInfo  
 {
-  uint8_t audio_energy[3]; 
-  uint8_t rgb_square_diff[3];
   uint8_t rgb_hist[NEGL_RGB_HIST_SLOTS];
+  uint8_t rgb_square_diff[3];
+  uint8_t audio_energy[3];
+  uint8_t text_track[8];
   uint8_t rgb_thumb[NEGL_RGB_THEIGHT*3];
   uint8_t rgb_mid_col[NEGL_RGB_HEIGHT*3];
   uint8_t rgb_mid_row[NEGL_RGB_HEIGHT*3];
 } FrameInfo;
+
+char *format="histogram audio thumb";
 
 int frame_start = 0;
 int frame_end   = 0;
@@ -50,12 +52,6 @@ char *input_analysis_path = NULL;
 char *output_analysis_path = NULL;
 int   show_progress = 0;
 int   frame_thumb = 0;
-int   record_audio_energy = 1;
-int   record_sum_diff =  1;
-int   record_rgb_hist = 1;
-int   record_thumb =1;
-int   record_mid_col = 1;
-int   record_mid_row = 1;
 int   horizontal = 0;
 int   time_out = 0;
 
@@ -96,6 +92,12 @@ void parse_args (int argc, char **argv)
       output_analysis_path = g_strdup (argv[i+1]);
       i++;
     } 
+    if (g_str_equal (argv[i], "-f")||
+        g_str_equal (argv[i], "--format"))
+    {
+      format = g_strdup (argv[i+1]);
+      i++;
+    } 
     else if (g_str_equal (argv[i], "-p") ||
         g_str_equal (argv[i], "--progress"))
     {
@@ -106,47 +108,10 @@ void parse_args (int argc, char **argv)
     {
       horizontal = 1;
     }
-    else if (g_str_equal (argv[i], "-d") ||
-        g_str_equal (argv[i], "--sum-diff"))
+    else if (g_str_equal (argv[i], "-v") ||
+        g_str_equal (argv[i], "--vertical"))
     {
-      record_sum_diff = 1;
-    }
-    else if (g_str_equal (argv[i], "-d") ||
-        g_str_equal (argv[i], "--no-sum-diff"))
-    {
-      record_sum_diff = 0;
-    }
-    else if (g_str_equal (argv[i], "--rgb-hist"))
-    {
-      record_rgb_hist = 1;
-    }
-    else if (g_str_equal (argv[i], "--thumb"))
-    {
-      record_thumb = 1;
-    }
-    else if (g_str_equal (argv[i], "--mid-row"))
-    {
-      record_mid_row = 1;
-    }
-    else if (g_str_equal (argv[i], "--no-mid-row"))
-    {
-      record_mid_row = 0;
-    }
-    else if (g_str_equal (argv[i], "--mid-col"))
-    {
-      record_mid_col = 1;
-    }
-    else if (g_str_equal (argv[i], "--no-mid-col"))
-    {
-      record_mid_col = 0;
-    }
-    else if (g_str_equal (argv[i], "--no-thumb"))
-    {
-      record_thumb = 0;
-    }
-    else if (g_str_equal (argv[i], "--no-rgb-hist"))
-    {
-      record_rgb_hist = 0;
+      horizontal = 0;
     }
     else if (g_str_equal (argv[i], "-ia") ||
         g_str_equal (argv[i], "--input-analysis"))
@@ -180,8 +145,7 @@ void parse_args (int argc, char **argv)
       frame_end = g_strtod (argv[i+1], NULL);
       i++;
     } 
-    else if (g_str_equal (argv[i], "-h") ||
-             g_str_equal (argv[i], "--help"))
+    else if (g_str_equal (argv[i], "--help"))
     {
       usage();
     }
@@ -283,7 +247,7 @@ static void decode_frame_no (int frame)
 {
   if (video_frame)
   {
-    if (record_sum_diff)
+    if (strstr (format, "diff"))
     {
        if (previous_video_frame)
          g_object_unref (previous_video_frame);
@@ -339,9 +303,9 @@ void find_best_thumb (void)
     FrameInfo info;
     GeglRectangle terrain_row;
     if (horizontal)
-      terrain_row = (GeglRectangle){frame-frame_start, 0, 1, TERRAIN_WIDTH};
+      terrain_row = (GeglRectangle){frame-frame_start, 0, 1, sizeof (FrameInfo)};
     else 
-      terrain_row = (GeglRectangle){0, frame-frame_start, TERRAIN_WIDTH, 1};
+      terrain_row = (GeglRectangle){0, frame-frame_start, sizeof (FrameInfo), 1};
     gegl_buffer_get (terrain, &terrain_row, 1.0, babl_format("RGB u8"),
                      &info, GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
     float score = score_frame (&info, frame);
@@ -373,7 +337,6 @@ static void extract_mid_col (GeglBuffer *buffer, void *rgb_mid_col, int samples)
      GEGL_ABYSS_NONE);
 }
 
-
 static void extract_thumb (GeglBuffer *buffer, void *rgb_thumb, int samples)
 {
   GeglRectangle thumb_scan;
@@ -401,7 +364,8 @@ static void extract_thumb (GeglBuffer *buffer, void *rgb_thumb, int samples)
     thumb_scan.width = samples;
   }
   gegl_buffer_get (buffer, &thumb_scan, 
-     1.0 * samples/ gegl_buffer_get_extent (buffer)->width,
+     horizontal?1.0 * samples/ gegl_buffer_get_extent (buffer)->height:
+                1.0 * samples/ gegl_buffer_get_extent (buffer)->width,
      babl_format ("R'G'B' u8"),
      (void*)rgb_thumb,
      //(void*)&(info->rgb_thumb)[0],
@@ -462,7 +426,9 @@ void extract_mid_row (GeglBuffer *buffer, void *rgb_mid_row, int samples)
     GEGL_ABYSS_NONE);
 }
 
-static void record_pix_stats (GeglBuffer *buffer, GeglBuffer *previous_buffer, uint8_t *rgb_square_diff, uint8_t *info_rgb_hist)
+static void record_pix_stats (GeglBuffer *buffer, GeglBuffer *previous_buffer,
+         uint8_t *info_rgb_hist,
+         uint8_t *rgb_square_diff)
 {
   int rgb_hist[NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM]={0,};
   int sum = 0;
@@ -489,7 +455,7 @@ static void record_pix_stats (GeglBuffer *buffer, GeglBuffer *previous_buffer, u
   {
     uint8_t *data = (void*)it->data[0];
     int i;
-    if (record_rgb_hist)
+    if (strstr (format, "histogram"))
       for (i = 0; i < it->length; i++)
       {
         int r = data[i * 3 + 0] / 256.0 * NEGL_RGB_HIST_DIM;
@@ -525,7 +491,7 @@ static void record_pix_stats (GeglBuffer *buffer, GeglBuffer *previous_buffer, u
       }
   }
 
-  if (record_rgb_hist)
+  if (strstr(format, "histogram"))
   {
    int slot;
    for (slot = 0; slot < NEGL_RGB_HIST_SLOTS; slot ++)
@@ -579,10 +545,10 @@ main (gint    argc,
   if (horizontal)
    terrain_rect = (GeglRectangle){0, 0,
                                 frame_end - frame_start + 1,
-                                TERRAIN_WIDTH};
+                                1024};
   else
    terrain_rect = (GeglRectangle){0, 0,
-                                TERRAIN_WIDTH,
+                                1024,
                                 frame_end - frame_start + 1};
 
   if (input_analysis_path && g_file_test (input_analysis_path, G_FILE_TEST_IS_REGULAR))
@@ -603,10 +569,13 @@ main (gint    argc,
   {
     terrain = gegl_buffer_new (&terrain_rect, babl_format ("R'G'B' u8"));
     {
-      FrameInfo info = {0};
       gint frame;
+      gint max_buf_pos = 0;
       for (frame = frame_start; frame <= frame_end; frame++)
         {
+          FrameInfo info = {0};
+          uint8_t buffer[4096] = {0,};
+          int buffer_pos = 0;
 
           if (show_progress)
           {
@@ -622,34 +591,91 @@ main (gint    argc,
 
           GeglRectangle terrain_row;
           if (horizontal)
-            terrain_row = (GeglRectangle){frame-frame_start, 0, 1, TERRAIN_WIDTH};
+            terrain_row = (GeglRectangle){frame-frame_start, 0, 1, 1024};
           else
-            terrain_row = (GeglRectangle){0, frame-frame_start, TERRAIN_WIDTH, 1};
+            terrain_row = (GeglRectangle){0, frame-frame_start, 1024, 1};
 
           decode_frame_no (frame);
 
-          if (record_rgb_hist || record_sum_diff)
-            record_pix_stats (video_frame, previous_video_frame,
-                              &(info.rgb_square_diff)[0], &(info.rgb_hist[0]));
-          if (record_mid_row)
-            extract_mid_row (video_frame, &(info.rgb_mid_row)[0], NEGL_RGB_HEIGHT);
-          if (record_mid_col)
-            extract_mid_col (video_frame,(void*)&(info.rgb_mid_col)[0], NEGL_RGB_HEIGHT);
-          if (record_thumb)
-            extract_thumb (video_frame, (void*)&(info.rgb_thumb)[0], NEGL_RGB_THEIGHT);
-          if (record_audio_energy)
-            {
-              GeglAudioFragment *audio = NULL;
-              gegl_node_get (load, "audio", &audio, NULL);
-              if (audio)
-                {
-                  extract_audio_energy (audio, &info.audio_energy[0]);
-                  g_object_unref (audio);
-                }
-                  
+          //for (int i=0;i<(signed)sizeof(buffer);i++)buffer[i]=0;
+
+          char *p = format;
+
+          GString *word = g_string_new ("");
+          while (*p == ' ') p++;
+          for (p= format;p==format || p[-1]!='\0';p++)
+          {
+            if (*p != '\0' && *p != ' ')
+              {
+                g_string_append_c (word, *p);
+              }
+            else
+              {
+               if (!strcmp (word->str, "histogram"))
+               {
+                 record_pix_stats (video_frame, previous_video_frame,
+                                   &(info.rgb_hist[0]),
+                                   &(info.rgb_square_diff)[0]);
+                 for (int i = 0; i < NEGL_RGB_HIST_SLOTS; i++)
+                 {
+                  buffer[buffer_pos] = info.rgb_hist[i];
+                  buffer_pos++;
+                 }
+                 for (int i = 0; i < 3; i++)
+                 {
+                   buffer[buffer_pos] = info.rgb_square_diff[i];
+                   buffer_pos++;
+                 }
+               }
+               else if (!strcmp (word->str, "mid-row"))
+               {
+                  int samples = NEGL_RGB_HEIGHT;
+                  if (p[1] >= '0' && p[1] <= '9')
+                  {
+                    samples = g_strtod (&p[1], &p);
+                  }
+                  extract_mid_row (video_frame, &(buffer)[buffer_pos], samples);
+                  buffer_pos += samples*3;
+               }
+               else if (!strcmp (word->str, "mid-col"))
+               {
+                  int samples = NEGL_RGB_HEIGHT;
+                  if (p[1] >= '0' && p[1] <= '9')
+                  {
+                    samples = g_strtod (&p[1], &p);
+                  }
+                  extract_mid_col (video_frame, &(buffer)[buffer_pos], samples);
+                  buffer_pos += samples*3;
+               }
+               else if (!strcmp (word->str, "thumb"))
+               {
+                  int samples = NEGL_RGB_THEIGHT;
+                  if (p[1] >= '0' && p[1] <= '9')
+                  {
+                    samples = g_strtod (&p[1], &p);
+                  }
+                  extract_thumb (video_frame, &(buffer)[buffer_pos], samples);
+                  buffer_pos += samples*3;
+               }
+               else if (!strcmp (word->str, "audio"))
+               {
+                 GeglAudioFragment *audio = NULL;
+                 gegl_node_get (load, "audio", &audio, NULL);
+                 if (audio)
+                  {
+                    extract_audio_energy (audio, &buffer[buffer_pos]);
+                    g_object_unref (audio);
+                  }
+                 buffer_pos+=3;
+               }
+               g_string_assign (word, "");
             }
+          }
+          max_buf_pos = buffer_pos;
+          g_string_free (word, TRUE);
+
           gegl_buffer_set (terrain, &terrain_row, 0, babl_format("RGB u8"),
-                           &info,
+                           buffer,
                            GEGL_AUTO_ROWSTRIDE);
 
           if (time_out > 1.0 &&
@@ -660,8 +686,14 @@ main (gint    argc,
                  terrain_rect.width = frame_end - frame_start + 1;
                else
                  terrain_rect.height = frame_end - frame_start + 1;
-               gegl_buffer_set_extent (terrain, &terrain_rect);
+          //     gegl_buffer_set_extent (terrain, &terrain_rect);
             }
+
+          if (horizontal)
+            terrain_rect.height = max_buf_pos/3;
+          else
+            terrain_rect.width = max_buf_pos/3;
+          gegl_buffer_set_extent (terrain, &terrain_rect);
         }
         if (show_progress)
         {
