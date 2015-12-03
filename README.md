@@ -49,7 +49,7 @@ Optional arguments can be passed in addition
          of input video
      -h, --horizontal   store a horizontal strata instead of vertical.
      -f  format string, specify which forms of analysis to put in the analysis file,
-         the default format is: "histogram audio thumb 40 mid-col 20"
+         the default format is: "histogram audio 4 thumb 40 mid-col 20"
 
 The analysis images contain a scanline per frame of the original video,
 interpreted as 24bit (8bpc) RGB data, or just as visual thumbnail references for the
@@ -63,7 +63,11 @@ video. Valid entries in the format string are:
 
 where the numbers represents the number of pixels to store from the video per frame.
 
-Example analysis of a segment of the movie Sintel.
+Horizontal, thumbnail only render from part of movie sintel:
+
+![Example analysis](http://pippin.gimp.org/tmp/sintel-horizontal.png)
+
+And a vertical analysis, with default format setting:
 
 ![Example analysis](http://pippin.gimp.org/tmp/sintel-vertical.png)
 
