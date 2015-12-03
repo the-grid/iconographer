@@ -35,7 +35,7 @@ typedef struct FrameInfo
   uint8_t audio_energy[3];
 } FrameInfo;
 
-char *format="histogram diff audio thumb 40 mid-col 20";
+char *format="histogram diff audio 4 thumb 64 mid-col 20";
 
 int frame_start = 0;
 int frame_end   = 0;
@@ -231,7 +231,7 @@ static void decode_frame_no (int frame)
 {
   if (video_frame)
   {
-    if (strstr (format, "diff"))
+    if (strstr (format, "histogram"))
     {
        if (previous_video_frame)
          g_object_unref (previous_video_frame);
@@ -304,7 +304,7 @@ void find_best_thumb (void)
 
 GeglNode *translate = NULL;
 
-static void extract_mid_col (GeglBuffer *buffer, void *rgb_mid_col, int samples)
+static int extract_mid_col (GeglBuffer *buffer, void *rgb_mid_col, int samples)
 {
   GeglRectangle mid_col;
   mid_col.x = 0;
@@ -319,9 +319,10 @@ static void extract_mid_col (GeglBuffer *buffer, void *rgb_mid_col, int samples)
      rgb_mid_col,
      GEGL_AUTO_ROWSTRIDE,
      GEGL_ABYSS_NONE);
+  return 3 * samples;
 }
 
-static void extract_thumb (GeglBuffer *buffer, void *rgb_thumb, int samples, int samples2)
+static int extract_thumb (GeglBuffer *buffer, void *rgb_thumb, int samples, int samples2)
 {
   GeglRectangle thumb_scan;
   static float vpos = 0.0;
@@ -355,10 +356,11 @@ static void extract_thumb (GeglBuffer *buffer, void *rgb_thumb, int samples, int
      //(void*)&(info->rgb_thumb)[0],
      GEGL_AUTO_ROWSTRIDE,
      GEGL_ABYSS_NONE);
+  return 3 * samples;
 }
 
 
-void extract_audio_energy (GeglAudioFragment *audio, uint8_t *audio_energy, int dups)
+int extract_audio_energy (GeglAudioFragment *audio, uint8_t *audio_energy, int dups)
 {
   int i;
   float left_max = 0;
@@ -393,9 +395,10 @@ void extract_audio_energy (GeglAudioFragment *audio, uint8_t *audio_energy, int 
     audio_energy[3*i+1] = (left_max+right_max)/2;
     audio_energy[3*i+2] = right_max;
   }
+  return 3 * dups;
 }
 
-void extract_mid_row (GeglBuffer *buffer, void *rgb_mid_row, int samples)
+int extract_mid_row (GeglBuffer *buffer, void *rgb_mid_row, int samples)
 {
   GeglRectangle mid_row;
   mid_row.width = 1;
@@ -410,6 +413,7 @@ void extract_mid_row (GeglBuffer *buffer, void *rgb_mid_row, int samples)
     rgb_mid_row,
     GEGL_AUTO_ROWSTRIDE,
     GEGL_ABYSS_NONE);
+  return 3 * samples;
 }
 
 static void record_pix_stats (GeglBuffer *buffer, GeglBuffer *previous_buffer,
@@ -620,8 +624,7 @@ main (gint    argc,
                   {
                     samples = g_strtod (&p[1], &p);
                   }
-                  extract_mid_row (video_frame, &(buffer)[buffer_pos], samples);
-                  buffer_pos += samples*3;
+                  buffer_pos += extract_mid_row (video_frame, &(buffer)[buffer_pos], samples);
                }
                else if (!strcmp (word->str, "mid-col"))
                {
@@ -630,8 +633,7 @@ main (gint    argc,
                   {
                     samples = g_strtod (&p[1], &p);
                   }
-                  extract_mid_col (video_frame, &(buffer)[buffer_pos], samples);
-                  buffer_pos += samples*3;
+                  buffer_pos += extract_mid_col (video_frame, &(buffer)[buffer_pos], samples);
                }
                else if (!strcmp (word->str, "thumb"))
                {
@@ -648,8 +650,7 @@ main (gint    argc,
                   else
                     samples2 = samples * gegl_buffer_get_height (video_frame)/gegl_buffer_get_width(video_frame);
 
-                  extract_thumb (video_frame, &(buffer)[buffer_pos], samples, samples2);
-                  buffer_pos += samples*3;
+                  buffer_pos += extract_thumb (video_frame, &(buffer)[buffer_pos], samples, samples2);
                }
                else if (!strcmp (word->str, "audio"))
                {
