@@ -39,6 +39,10 @@ Make last frame for analysis/consideration be frame number 420
 
     $ iconographer video.ogv frame.png -t 120
 
+The image strip above was created with:
+
+    $ iconographer sintel-1024-surround.mp4 -p -h -f 'thumb 64' -s 1024 -e 2048 -a sintel-horizontal.png 
+
 Optional arguments can be passed in addition
 
      -p  show progress in terminal
