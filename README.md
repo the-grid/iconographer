@@ -47,26 +47,29 @@ Optional arguments can be passed in addition
      -e  end-frame last frame in video to extract, 0; the default means all frames
          of input video
      -f  format string, specify which forms of analysis to put in the analysis file,
-         the default format is: "histogram audio thumb 40 mid-row 20"
+         the default format is: "histogram audio thumb 40 mid-col 20"
 
 The analysis images contain a scanline per frame of the original video,
-interpreted as 24bit (8bpc) RGB data the following struct maps the
-datastructure:
+interpreted as 24bit (8bpc) RGB data, or just as visual thumbnail references for the
+video. Valid entries in the format string are:
+  histogram
+  audio
+  thumb 50
+  mid-row 20
+  mid-col 30
 
+where the numbers represens the number of pixels to store from the video per frame.
+
+For thumbnail extraction to work properly the first element of the format
+string should be the histogram analysis, the expected defaults also map to the
+following c in-memory structure.
 ```c
-
-#define NEGL_RGB_HEIGHT      42
-#define NEGL_RGB_THEIGHT     42
 #define NEGL_RGB_HIST_DIM    6 
 #define NEGL_RGB_HIST_SLOTS (NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM * NEGL_RGB_HIST_DIM)
-
 typedef struct FrameInfo
 {
-  uint8_t rgb_thumb[NEGL_RGB_THEIGHT*3];
+  uint8_t rgb_hist[NEGL_RGB_HIST_SLOTS];
   uint8_t rgb_square_diff[3];
   uint8_t audio_energy[3];
-  uint8_t rgb_hist[NEGL_RGB_HIST_SLOTS];
-  uint8_t rgb_mid_col[NEGL_RGB_HEIGHT*3];
-  uint8_t rgb_mid_row[NEGL_RGB_HEIGHT*3];
 } FrameInfo;
 ```

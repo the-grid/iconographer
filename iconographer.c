@@ -40,7 +40,6 @@ typedef struct FrameInfo
 } FrameInfo;
 
 char *format="histogram audio thumb 40 mid-col 20";
-         //the default format is: "histogram audio thumb 40 mid-row 20 mid-col 20"
 
 int frame_start = 0;
 int frame_end   = 0;
