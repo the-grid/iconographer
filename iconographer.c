@@ -276,12 +276,12 @@ float score_frame (FrameInfo *info, int frame_no)
   return sum_score;
 }
 
-void find_best_thumb (void)
+static void find_best_thumb (void)
 {
-  int frame;
+  int frame = 0;
   float best_score = 0.0;
   frame_thumb = 0;
- 
+  
   for (frame = 0; frame < frame_end; frame++)
   {
     FrameInfo info;
