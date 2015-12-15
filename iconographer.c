@@ -145,9 +145,6 @@ void parse_args (int argc, char **argv)
   }
 }
 
-#define TERRAIN_STRIDE sizeof(FrameInfo)
-#define TERRAIN_WIDTH  (TERRAIN_STRIDE/3)
-
 #include <string.h>
 
 GeglNode   *gegl_decode  = NULL;
