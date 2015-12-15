@@ -37,7 +37,7 @@ frame in frame.png
 
 Make last frame for analysis/consideration be frame number 420
 
-    $ iconographer video.ogv frame.png -t 120
+    $ iconographer video.ogv frame.png -e 420
 
 The image strip above was created with:
 
