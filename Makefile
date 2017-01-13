@@ -1,4 +1,5 @@
 PREFIX=$(shell echo `pwd`)
+PREFIX_DEP=$(PREFIX)/imgflo-dependencies/install
 VERSION=$(shell echo `git describe --tags`)
 CFLAGS += -Wall -Wextra
 CFLAGS += -Ofast -g -rdynamic
@@ -10,23 +11,23 @@ CFLAGS +=  -I. -D_XOPEN_SOURCE=500
 CFLAGS += -std=c99
 
 LIBS=gegl-0.3 libsoup-2.4 gio-unix-2.0 json-glib-1.0 libpng
-DEPS=$(shell $(PREFIX)/env.sh pkg-config --define-variable=prefix=$(PREFIX)/imgflo-dependencies/install/ --libs --cflags $(LIBS))
+DEPS=$(shell $(PREFIX)/env.sh pkg-config --define-variable=prefix=$(PREFIX)/imgflo-dependencies/install --libs --cflags $(LIBS))
 TRAVIS_DEPENDENCIES=$(shell echo `cat .vendor_urls | sed -e "s/heroku/travis-linux/" | tr -d '\n'`)
 
 all: install
 
-iconographer: iconographer.c Makefile *.c
+iconographer: env iconographer.c Makefile *.c
 	$(PREFIX)/env.sh gcc -o iconographer *.c -I. $(CFLAGS) $(DEPS)
 
 clean:
 	rm iconographer
 
-install: travis-deps env iconographer
+install: travis-deps iconographer
 	cp iconographer /usr/local/bin
 
 env:
+	sed -e 's|dir|$(PREFIX_DEP)|' env.sh.in > $(PREFIX)/env.sh
 	chmod +x $(PREFIX)/env.sh
-	@echo "$$GEGL_PATH"
 
 travis-deps:
 	wget -O imgflo-dependencies.tgz $(TRAVIS_DEPENDENCIES)
