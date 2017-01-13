@@ -33,7 +33,7 @@ env:
 travis-deps:
 	wget -O $(PREFIX)/imgflo-dependencies.tgz $(TRAVIS_DEPENDENCIES)
 	mkdir -p $(PREFIX)/build/imgflo-dependencies
-	tar -xvzf $(PREFIX)/imgflo-dependencies.tgz -C $(PREFIX)/build/imgflo-dependencies
+	tar -xzf $(PREFIX)/imgflo-dependencies.tgz -C $(PREFIX)/build/imgflo-dependencies
 
 clean:
 	rm -rf $(PREFIX)/env.sh $(PREFIX)/imgflo-dependencies.tgz
