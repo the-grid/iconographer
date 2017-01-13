@@ -17,6 +17,8 @@ DEPS+=$(shell $(PREFIX)/env.sh pkg-config --libs --cflags $(SYSTEM_LIBS))
 TRAVIS_DEPENDENCIES=$(shell echo `cat .vendor_urls | sed -e "s/heroku/travis-linux/" | tr -d '\n'`)
 TARGET=$(shell uname -n)
 
+VIDEO_URL="ftp://vps.jonnor.com/imgflo/printed-electret-microphone.mp4"
+
 all: release
 
 iconographer: env iconographer.c Makefile *.c
@@ -39,7 +41,7 @@ clean:
 	rm -rf $(PREFIX)/env.sh $(PREFIX)/imgflo-dependencies.tgz
 
 check:
-	wget -O $(PREFIX)/video.mp4 https://the-grid-user-content.s3-us-west-2.amazonaws.com/0f5a1680-0818-4eae-a8a7-e758a2461511.mp4
+	wget -O $(PREFIX)/video.mp4 $(VIDEO_URL)
 	$(PREFIX)/env.sh $(PREFIX)/build/bin/iconographer -p $(PREFIX)/video.mp4 $(PREFIX)/frame.png
 
 release: install check clean
