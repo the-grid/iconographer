@@ -29,7 +29,7 @@ if [ -z "$AMAZON_API_TOKEN" ];
 then
   echo "Amazon API Token not provided, skipping upload";
 else
-  uploadToS3 "../iconographer-${VERSION}-${TARGET}.tgz" "/bundles/" $AMAZON_API_ID $AMAZON_API_TOKEN $AMAZON_API_BUCKET
+  uploadToS3 "./iconographer-${VERSION}-${TARGET}.tgz" "/bundles/" $AMAZON_API_ID $AMAZON_API_TOKEN $AMAZON_API_BUCKET
   echo "Success!"
 fi
 echo "End."
