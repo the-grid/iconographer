@@ -40,7 +40,7 @@ clean:
 
 check:
 	wget -O $(PREFIX)/video.mp4 https://the-grid-user-content.s3-us-west-2.amazonaws.com/0f5a1680-0818-4eae-a8a7-e758a2461511.mp4
-	$(PREFIX)/env.sh ./build/bin/iconographer $(PREFIX)/video.mp4
+	$(PREFIX)/env.sh $(PREFIX)/build/bin/iconographer -p $(PREFIX)/video.mp4 $(PREFIX)/frame.png
 
 release: install check clean
 	cd $(PREFIX) && tar -czf iconographer-$(VERSION)-$(TARGET).tgz build
