@@ -39,7 +39,8 @@ clean:
 	rm -rf $(PREFIX)/env.sh $(PREFIX)/imgflo-dependencies.tgz
 
 check:
-	$(PREFIX)/env.sh ./build/bin/iconographer --progress
+	wget -O $(PREFIX)/video.mp4 https://the-grid-user-content.s3-us-west-2.amazonaws.com/0f5a1680-0818-4eae-a8a7-e758a2461511.mp4
+	$(PREFIX)/env.sh ./build/bin/iconographer $(PREFIX)/video.mp4
 
 release: install check clean
 	cd $(PREFIX) && tar -czf iconographer-$(VERSION)-$(TARGET).tgz build
