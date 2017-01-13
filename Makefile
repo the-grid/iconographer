@@ -10,8 +10,10 @@ CFLAGS += -Wno-unused-parameter  -Wno-sign-compare
 CFLAGS +=  -I. -D_XOPEN_SOURCE=500
 CFLAGS += -std=c99
 
-LIBS=gegl-0.3 libsoup-2.4 gio-unix-2.0 json-glib-1.0 libpng
+LIBS=gegl-0.3 libsoup-2.4
+SYSTEM_LIBS=gio-unix-2.0 json-glib-1.0 libpng
 DEPS=$(shell $(PREFIX)/env.sh pkg-config --define-variable=prefix=$(PREFIX)/imgflo-dependencies/install --libs --cflags $(LIBS))
+DEPS+=$(shell $(PREFIX)/env.sh pkg-config --libs --cflags $(SYSTEM_LIBS))
 TRAVIS_DEPENDENCIES=$(shell echo `cat .vendor_urls | sed -e "s/heroku/travis-linux/" | tr -d '\n'`)
 
 all: install
@@ -23,7 +25,7 @@ clean:
 	rm iconographer
 
 install: travis-deps iconographer
-	cp iconographer /usr/local/bin
+	cp iconographer $(PREFIX)/bin
 
 env:
 	sed -e 's|dir|$(PREFIX_DEP)|' env.sh.in > $(PREFIX)/env.sh
