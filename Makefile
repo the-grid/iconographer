@@ -45,4 +45,4 @@ check:
 	$(PREFIX)/env.sh $(PREFIX)/build/bin/iconographer -p $(PREFIX)/video.mp4 $(PREFIX)/frame.png
 
 release: install check clean
-	cd $(PREFIX) && tar -czf iconographer-$(VERSION)-$(TARGET).tgz build
+	cd $(PREFIX) && tar -czf iconographer-$(VERSION)-$(TARGET).tgz $(PREFIX)/build/bin
