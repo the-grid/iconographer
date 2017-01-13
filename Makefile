@@ -15,8 +15,9 @@ SYSTEM_LIBS=gio-unix-2.0 json-glib-1.0 libpng
 DEPS=$(shell $(PREFIX)/env.sh pkg-config --define-variable=prefix=$(PREFIX)/imgflo-dependencies/install --libs --cflags $(LIBS))
 DEPS+=$(shell $(PREFIX)/env.sh pkg-config --libs --cflags $(SYSTEM_LIBS))
 TRAVIS_DEPENDENCIES=$(shell echo `cat .vendor_urls | sed -e "s/heroku/travis-linux/" | tr -d '\n'`)
+TARGET=$(shell uname -n)
 
-all: install
+all: release
 
 iconographer: env iconographer.c Makefile *.c
 	$(PREFIX)/env.sh gcc -o iconographer *.c -I. $(CFLAGS) $(DEPS)
@@ -37,4 +38,4 @@ travis-deps:
 	tar -xvzf imgflo-dependencies.tgz -C $(PREFIX)/imgflo-dependencies
 
 release: install
-	cd $(PREFIX) && tar -czf ../iconographer-$(VERSION).tgz ./
+	cd $(PREFIX) && tar -czf ../iconographer-$(VERSION)-$(TARGET).tgz ./
