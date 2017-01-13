@@ -9,6 +9,9 @@ addons:
     - libglib2.0-dev
     - libgif-dev
     - libpango1.0-dev
+    - librsvg2-dev
+    - libsdl1.2-dev
+    - openexr
 script:
 - make release
 - ./build.sh
