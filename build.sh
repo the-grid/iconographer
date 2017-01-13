@@ -29,7 +29,12 @@ if [ -z "$AMAZON_API_TOKEN" ];
 then
   echo "Amazon API Token not provided, skipping upload";
 else
-  uploadToS3 "./iconographer-${VERSION}-${TARGET}.tgz" "/bundles/" $AMAZON_API_ID $AMAZON_API_TOKEN $AMAZON_API_BUCKET
-  echo "Success!"
+  if [ ! -f iconographer-${VERSION}-${TARGET}.tgz ];
+  then
+    echo "Iconographer tarball for this version was not found!"
+  else
+    uploadToS3 "iconographer-${VERSION}-${TARGET}.tgz" "/bundles/" $AMAZON_API_ID $AMAZON_API_TOKEN $AMAZON_API_BUCKET
+    echo "Success!"
+  fi
 fi
 echo "End."
