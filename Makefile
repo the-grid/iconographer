@@ -20,15 +20,12 @@ TARGET=$(shell uname -n)
 all: release
 
 iconographer: env iconographer.c Makefile *.c
-	$(PREFIX)/env.sh gcc -o iconographer *.c -I. $(CFLAGS) $(DEPS)
-
-clean:
-	rm iconographer
+	$(PREFIX)/env.sh gcc -o ./bin/iconographer *.c -I. $(CFLAGS) $(DEPS)
 
 install: travis-deps iconographer
-	cp iconographer $(PREFIX)/bin
 
 env:
+	mkdir -p $(PREFIX)/bin || true
 	sed -e 's|dir|$(PREFIX_DEP)|' env.sh.in > $(PREFIX)/env.sh
 	chmod +x $(PREFIX)/env.sh
 
@@ -37,5 +34,8 @@ travis-deps:
 	mkdir -p $(PREFIX)/imgflo-dependencies
 	tar -xvzf imgflo-dependencies.tgz -C $(PREFIX)/imgflo-dependencies
 
-release: install
+clean:
+	rm -rf $(PREFIX)/env.sh $(PREFIX)/imgflo-dependencies.tgz
+
+release: install clean
 	cd $(PREFIX) && tar -czf ../iconographer-$(VERSION)-$(TARGET).tgz ./
