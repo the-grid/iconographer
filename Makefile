@@ -38,7 +38,7 @@ travis-deps:
 	tar -xzf $(PREFIX)/imgflo-dependencies.tgz -C $(PREFIX)/build/imgflo-dependencies
 
 clean:
-	rm -rf $(PREFIX)/env.sh $(PREFIX)/imgflo-dependencies.tgz
+	rm -rf $(PREFIX)/env.sh $(PREFIX)/imgflo-dependencies.tgz $(PREFIX)/frame.png $(PREFIX)/video.mp4
 
 check:
 	wget -O $(PREFIX)/video.mp4 $(VIDEO_URL)
