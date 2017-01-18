@@ -22,8 +22,17 @@ function uploadToS3 {
   echo "Uploaded to https://$aws_bucket.s3.amazonaws.com$aws_path$file"
 }
 
-VERSION=`git describe --tags`
-TARGET=`uname -n`
+if [ -z "$VERSION" ];
+then
+  echo "VERSION not set, going with git tags as version";
+  VERSION=`git describe --tags`
+fi
+
+if [ -z "$TARGET" ];
+then
+  echo "TARGET not set, going with system name";
+  TARGET=`uname -n`
+fi
 
 if [ -z "$AMAZON_API_TOKEN" ];
 then
