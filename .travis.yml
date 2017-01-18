@@ -13,8 +13,8 @@ addons:
     - libsdl1.2-dev
     - openexr
 script:
-- make release
-- ./upload-to-s3.sh
+- make release VERSION=`git describe --tags` TARGET=travis-${TRAVIS_OS_NAME}
+- VERSION=`git describe --tags` TARGET=travis-${TRAVIS_OS_NAME} bash upload-to-s3.sh
 - rm -rf build
 env:
   global:
@@ -30,4 +30,4 @@ deploy:
   on:
     repo: the-grid/iconographer
   run:
-  - ./upload-to-s3.sh
+  - make release-heroku VERSION=`git describe --tags` TARGET=heroku
