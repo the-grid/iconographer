@@ -13,8 +13,8 @@ addons:
     - libsdl1.2-dev
     - openexr
 script:
-- make release-travis VERSION=`git describe --tags` TARGET=travis-${TRAVIS_OS_NAME}
-- rm -rf build
+- make release-and-upload VERSION=`git describe --tags` TARGET=travis-${TRAVIS_OS_NAME}
+- rm -rf build *.tgz
 env:
   global:
   - secure: LBViXO2FEcr7vmP4fPfvfeydlqwMBk7BnLx7pFnXcjOve1m4QBq87yoIYxFqInQHtrnAamMptKZ7cHpj96tdS1rKz/0fBUpZqD0FZcdI1zRC6aDWhiMNkRPY/0HC3qY8A/B0P7cMtmPtyGZArSSsSzzCaMF+tgaDAcswtpqqtN1Hm+DQ914kjhsKEVZGVCU2If38yGTApFzks4YGZmZvJl1c/vWDCQkSXQXsZkdpaPsmmLIv1ysvVdkMBI5lTcNXpScJrc1SF5lcgo2fvhB5xJm/6hqcjrKvlj6nnxto2yJau7nyZScJ32v7DQxYETGB/OBw2Q0wVZa62YC7EkEbK+tNUX0PFdw8kvvDZmrobke8UY+T/SFwAIXZ3+XW5eWzkhGPKO7M4aUlLO70ry3fbWOfPmBk5DJLTjLZIz5auGfeNw5faKEnC+gpRuKKw0smTmchL4twysH0zaSEx1ro63BFhZO1YGLgqdG0WyIKCiaNEiINAlE78gdfVdCbIt9K6BT0A8q7dPnmNSWExafjQ+Gd/smp7K1C9p4KyyrlEKrYYoUHusaDgNP1fCK4amqctRRNDVQ5ySy8xj+/Tf5M+PZXQqKVHmaRoVbrWjWyjnH/orJmvBuQvI/orfFEDDtOz5ZvJlS8vRZWstfgR3gDGhchI0VG7Vm/9x8UCV7YKks=
@@ -29,5 +29,5 @@ deploy:
   on:
     repo: the-grid/iconographer
   run:
-  - make release-heroku VERSION=`git describe --tags` TARGET=heroku
-  - rm -rf build
+  - make release-and-upload VERSION=`git describe --tags` TARGET=heroku
+  - rm -rf build *.tgz

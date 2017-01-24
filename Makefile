@@ -47,8 +47,5 @@ check:
 release: install check clean
 	cd $(PREFIX)/build && tar -czf $(PREFIX)/iconographer-$(VERSION)-$(TARGET).tgz bin
 
-release-travis: release
-	cd $(PREFIX) && bash $(PREFIX)/upload-to-s3.sh
-
-release-heroku: release
+release-and-upload: release
 	cd $(PREFIX) && bash $(PREFIX)/upload-to-s3.sh
