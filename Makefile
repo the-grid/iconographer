@@ -47,5 +47,7 @@ check:
 release: install check clean
 	cd $(PREFIX)/build && tar -czf $(PREFIX)/iconographer-$(VERSION)-$(TARGET).tgz bin
 
-release-and-upload: release
+upload:
 	cd $(PREFIX) && bash $(PREFIX)/upload-to-s3.sh
+
+release-and-upload: release upload
