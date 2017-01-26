@@ -1,5 +1,4 @@
-iconographer - tool to extract representative frame from video
---------------------------------------------------------------
+# iconographer [![Build Status](https://secure.travis-ci.org/the-grid/iconographer.png?branch=master)](http://travis-ci.org/the-grid/iconographer)
 
 iconographer is a tool to extract a representative frame from videos.
 This is done as a two stage process the first produces an image with
