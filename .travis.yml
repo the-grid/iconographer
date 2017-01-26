@@ -13,7 +13,9 @@ addons:
     - libsdl1.2-dev
     - openexr
 script:
-- make release-and-upload VERSION=`git describe --tags` TARGET=travis-${TRAVIS_OS_NAME}
+- make release VERSION=`git describe --tags` TARGET=travis-${TRAVIS_OS_NAME}
+before_deploy:
+- make upload VERSION=`git describe --tags` TARGET=travis-${TRAVIS_OS_NAME}
 - rm -rf build *.tgz
 env:
   global:
