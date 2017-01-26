@@ -29,7 +29,7 @@ deploy:
     secure: CZMQ8+jNtT0iPKnb0VfFLNi7iLeeoBduqaf025T397WgIur6v84AMeeftFsUsQ/Tl2uogaocp7V3I3dFn66Aq2vDWY8DDBcsiNf9go+kYTPp3oDNCFkoGbJDGXuoZyviV/quaIAhsvvGVWkvhbCcSZh0/HkJ3hBoQzMydJuUgcDkJAhBzWupJJnNSHOELXs9LDFeCd5Hf5DAQduVwAdAZYoSl65NhWcs92tmkJ3Nntnp2MoMDbn2wvaF5IwYGPouGozhwVHf1bS0uhWo+juYONpLkbRpEov19lMuxBJAK55ISrs624YlTspV6osh3ujH2WChbul7dNwvcbtZK90k1s0NR4K7vUzQwduPMpXJiuWIsHMe+4V7XYG8dThtNtLDKywsebIw2oJIw31L6Zc3lu2S6FwWpXNHnlx+5qxbxN2H8plJbI/6G+C1hK+pw6nF0vwpxDkBcuvERcUvk0XSx0VtEckYQVXwRl/bzop/TpMU3CtEwyUzh3edrmdTXSwwQdYMuGze++C4E1hEcDe3qsaRfaBQs4b4jzqH/reU4iRMVQYGxx9829sUKheBaU4mamMyIFRsNfrWmcKq/hx/7XQBu+fJHJFFSlXxs6jJmwvZ8xmHKRltMJhU3s4rIYmLFbx5+3PCbVlZ0q1cUkEcMFkIVhHa6tJJpoq/eHTu40E=
   app: iconographer
   on:
-    all_branches: true
+    tags: true
     repo: the-grid/iconographer
   run:
   - make release-and-upload VERSION=`git describe --tags` TARGET=heroku
