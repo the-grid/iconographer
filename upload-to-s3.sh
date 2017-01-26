@@ -37,6 +37,7 @@ fi
 if [ -z "$AMAZON_API_TOKEN" ];
 then
   echo "Amazon API Token not provided, skipping upload";
+  exit -1;
 else
   if [ ! -f iconographer-${VERSION}-${TARGET}.tgz ];
   then
