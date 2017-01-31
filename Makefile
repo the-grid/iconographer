@@ -47,7 +47,13 @@ check:
 release: install check clean
 	cd $(PREFIX)/build && tar -czf $(PREFIX)/iconographer-$(VERSION)-$(TARGET).tgz bin
 
+release-heroku: install check clean
+	sed -e 's|dir|$(PREFIX)/install|' env.sh.in > $(PREFIX)/env.sh
+	chmod +x $(PREFIX)/env.sh
+	mv $(PREFIX)/env.sh $(PREFIX)/build/bin/
+	cd $(PREFIX)/build && tar -czf $(PREFIX)/iconographer-$(VERSION)-$(TARGET).tgz bin
+
 upload:
 	cd $(PREFIX) && bash $(PREFIX)/upload-to-s3.sh
 
-release-and-upload: release upload
+release-and-upload: release-heroku upload
